@@ -1,7 +1,7 @@
 {
   "name": "quicky-setup",
   "version": "0.0.1",
-  "description": "Quickly set up a React/Next.js project with Tailwind, Redux, Axios, Auth, ESLint, and Theme Switch.",
+  "description": "A small CLI for scaffolding React or Next.js projects with a theme-first baseline.",
   "bin": {
     "quicky-setup": "./dist/bin/quicky-setup.js"
   },
@@ -11,8 +11,6 @@
     "nextjs",
     "boilerplate",
     "tailwind",
-    "redux",
-    "eslint",
     "axios",
     "theme",
     "cli",
@@ -29,20 +27,37 @@
     "url": "https://github.com/your-org/quicky-setup/issues"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.99.0",
+    "axios": "^1.15.0",
     "chalk": "^5.3.0",
-    "execa": "^9.0.0",
-    "prompts": "^2.4.2"
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
+    "prompts": "^2.4.2",
+    "react-hook-form": "^7.72.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/node": "^22.18.8",
     "@types/prompts": "^2.4.9",
-    "typescript": "^5.9.3"
+    "husky": "^9.1.7",
+    "jsdom": "^29.0.2",
+    "prettier": "^3.8.3",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "clean": "if exist dist rmdir /s /q dist",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "start": "node ./dist/bin/quicky-setup.js",

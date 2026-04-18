@@ -2,39 +2,35 @@ import prompts from "prompts";
 import chalk from 'chalk';
 
 export type Framework = "react" | "next";
+export type Language = "js" | "ts";
+export type UiLibrary = "none" | "shadcn";
+export type AdvancedMode = "skip" | "go_advanced";
 
-// Helper function to create styled messages
 const style = {
-  title: chalk.hex('#FF6B6B').bold,
-  subtitle: chalk.hex('#4ECDC4'),
-  success: chalk.green.bold,
-  info: chalk.blue,
-  warning: chalk.yellow,
-  error: chalk.red.bold,
-  highlight: chalk.hex('#FFD166').bold,
-  code: chalk.bgGray.italic
+  highlight: chalk.hex("#FFD166").bold,
+  prompt: chalk.hex("#4ECDC4").bold,
+  muted: chalk.hex("#94A3B8"),
 };
 
-// Welcome message
-console.log(`
-${chalk.hex('#4ECDC4').bold('┌───────────────────────────────────────┐')}
-${chalk.hex('#4ECDC4').bold('│')}   ${chalk.hex('#FF6B6B').bold('🚀 Welcome to Quicky Setup!')}    ${chalk.hex('#4ECDC4').bold('│')}
-${chalk.hex('#4ECDC4').bold('│')}   ${chalk.hex('#4ECDC4')('The fastest way to set up your')}    ${chalk.hex('#4ECDC4').bold('│')}
-${chalk.hex('#4ECDC4').bold('│')}   ${chalk.hex('#4ECDC4')('React/Next.js project')} ${chalk.hex('#FF6B6B').bold('⚡')}           ${chalk.hex('#4ECDC4').bold('│')}
-${chalk.hex('#4ECDC4').bold('└───────────────────────────────────────┘')}
-`);
-export type Language = "js" | "ts";
-export type UiLibrary = "none" | "shadcn" | "antd";
-export type AuthStorage = "cookie" | "localStorage" | null;
+function promptMessage(text: string): string {
+  return `${style.prompt("◆")} ${style.highlight(text)}`;
+}
 
 export interface Answers {
   projectName: string;
   framework: Framework;
   routing: "app" | "pages";
   language: Language;
-  auth: boolean;
-  authStorage: AuthStorage;
   uiLibrary: UiLibrary;
+  setupHusky: boolean;
+  advancedMode: AdvancedMode;
+  reactQuery: boolean;
+  auth: boolean;
+  forms: boolean;
+  toasts: boolean;
+  i18n: boolean;
+  seo: boolean;
+  tests: boolean;
 }
 
 export async function askQuestions(): Promise<Answers> {
@@ -42,7 +38,7 @@ export async function askQuestions(): Promise<Answers> {
     {
       type: "text",
       name: "projectName",
-      message: style.highlight("✨ Project name:"),
+      message: promptMessage("Project name:"),
       initial: "my-app",
       format: (val: string) => style.highlight(val),
       style: 'default',
@@ -55,7 +51,7 @@ export async function askQuestions(): Promise<Answers> {
     {
       type: "select",
       name: "framework",
-      message: style.highlight("🚀 Choose your framework:"),
+      message: promptMessage("Choose your framework:"),
       choices: [
         { title: "React (Vite)", value: "react" },
         { title: "Next.js", value: "next" },
@@ -64,7 +60,7 @@ export async function askQuestions(): Promise<Answers> {
     {
       type: "select",
       name: "language",
-      message: style.highlight("💻 Choose your language:"),
+      message: promptMessage("Choose your language:"),
       choices: [
         { title: "JavaScript", value: "js" },
         { title: "TypeScript", value: "ts" },
@@ -74,39 +70,104 @@ export async function askQuestions(): Promise<Answers> {
       type: (prev: string, values: any) =>
         values.framework === "next" ? "select" : null,
       name: "routing",
-      message: style.highlight("🛣️  Choose Next.js routing system:"),
+      message: promptMessage("Choose Next.js routing system:"),
       choices: [
         { title: "App Router (recommended)", value: "app" },
         { title: "Pages Router (classic)", value: "pages" },
       ],
     },
     {
-      type: "confirm",
-      name: "auth",
-      message: style.highlight("🔒 Include Auth + Axios?"),
-      initial: true,
-    },
-    {
-      type: (prev: boolean) => (prev ? "select" : null),
-      name: "authStorage",
-      message: style.highlight("📦 Choose auth storage type:"),
-      choices: [
-        { title: "Cookie", value: "cookie" },
-        { title: "LocalStorage", value: "localStorage" },
-      ],
-    },
-    {
       type: "select",
       name: "uiLibrary",
-      message: style.highlight("🎨 Choose a UI library (or none for plain CSS):"),
+      message: promptMessage("Choose a UI library:"),
       choices: [
         { title: "None", value: "none" },
         { title: "Shadcn UI", value: "shadcn" },
-        { title: "Ant Design", value: "antd" },
       ],
+    },
+    {
+      type: "confirm",
+      name: "setupHusky",
+      message: promptMessage("Set up Husky pre-commit hooks?"),
+      initial: true,
+    },
+    {
+      type: "select",
+      name: "advancedMode",
+      message: promptMessage("Advanced setup:"),
+      choices: [
+        { title: "Skip extra setup", value: "skip" },
+        { title: "Go advanced", value: "go_advanced" },
+      ],
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" ? "confirm" : null,
+      name: "reactQuery",
+      message: promptMessage("Add React Query?"),
+      initial: true,
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" ? "confirm" : null,
+      name: "auth",
+      message: promptMessage("Add auth scaffold?"),
+      initial: true,
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" ? "confirm" : null,
+      name: "forms",
+      message: promptMessage("Add forms stack?"),
+      initial: true,
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" ? "confirm" : null,
+      name: "toasts",
+      message: promptMessage("Add toast system?"),
+      initial: true,
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" ? "confirm" : null,
+      name: "i18n",
+      message: promptMessage("Add language support (i18n)?"),
+      initial: false,
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" && values.framework === "next"
+          ? "confirm"
+          : null,
+      name: "seo",
+      message: promptMessage("Generate SEO metadata?"),
+      initial: true,
+    },
+    {
+      type: (prev: string, values: any) =>
+        values.advancedMode === "go_advanced" ? "confirm" : null,
+      name: "tests",
+      message: promptMessage("Add test baseline?"),
+      initial: true,
     },
   ]);
 
-  console.log(`\n${style.success('✓')} ${style.highlight('Configuration complete!')} Let's set up your project...\n`);
+  if (result.framework !== "next") {
+    result.routing = "app";
+    result.seo = false;
+  }
+
+  if (result.advancedMode !== "go_advanced") {
+    result.reactQuery = false;
+    result.auth = false;
+    result.forms = false;
+    result.toasts = false;
+    result.i18n = false;
+    result.tests = false;
+    result.seo = false;
+  }
+
+  console.log(`\n${chalk.green('✓')} Configuration complete! Let's set up your project...\n`);
   return result as Answers;
 }
