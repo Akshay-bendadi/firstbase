@@ -150,25 +150,52 @@ permissions:
 
 jobs:
   socket:
-    if: \${{ secrets.SOCKET_SECURITY_API_KEY != '' }}
     runs-on: ubuntu-latest
+    env:
+      SOCKET_SECURITY_API_KEY: \${{ secrets.SOCKET_SECURITY_API_KEY }}
+      SOCKET_ORG: \${{ vars.SOCKET_ORG }}
     steps:
+      - name: Check Socket configuration
+        id: socket-config
+        shell: bash
+        run: |
+          if [ -z "$SOCKET_SECURITY_API_KEY" ]; then
+            echo "::notice title=Socket skipped::SOCKET_SECURITY_API_KEY is not available to this workflow run."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -z "$SOCKET_ORG" ]; then
+            echo "::notice title=Socket skipped::SOCKET_ORG repository variable is not configured."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "::add-mask::$SOCKET_SECURITY_API_KEY"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: steps.socket-config.outputs.enabled == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node
+        if: steps.socket-config.outputs.enabled == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
           cache: npm
 
       - name: Install Socket CLI
+        if: steps.socket-config.outputs.enabled == 'true'
         run: npm install --global socket@1.1.85
 
       - name: Run Socket policy scan
-        run: socket ci
-        env:
-          SOCKET_SECURITY_API_KEY: \${{ secrets.SOCKET_SECURITY_API_KEY }}
+        if: steps.socket-config.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          repo="\${GITHUB_REPOSITORY#*/}"
+          branch="\${GITHUB_HEAD_REF:-\${GITHUB_REF_NAME}}"
+          socket scan create --org "$SOCKET_ORG" --repo "$repo" --branch "$branch" --report --no-interactive .
 `;
 }
 

@@ -112,7 +112,7 @@ Next.js 16 uses Turbopack by default for `next dev` and `next build`, so no `--t
 
 The default Husky hook only runs local scripts. It does not make network requests and does not interpolate user input.
 
-The generated `socket.yml` workflow runs Socket only when `SOCKET_SECURITY_API_KEY` is configured. The Socket CLI install is pinned to `socket@1.1.85`.
+The generated `socket.yml` workflow always runs a preflight job and skips cleanly when Socket is not configured. It scans only when the GitHub secret `SOCKET_SECURITY_API_KEY` and repository variable `SOCKET_ORG` are available. The Socket CLI install is pinned to `socket@1.1.85`.
 
 ## shadcn/ui-Compatible Files
 
@@ -149,7 +149,7 @@ The generated `npm run check` includes tests only when the user selects the adva
 - The Axios client blocks cross-origin absolute requests from the configured API instance and removes authorization headers before throwing.
 - Next.js projects receive `next.config.*` with baseline security headers and a Content Security Policy.
 - CI includes GitHub Dependency Review on pull requests.
-- CI includes an optional Socket policy scan for malicious package behavior and install-script risk when `SOCKET_SECURITY_API_KEY` is set.
+- CI includes an optional Socket policy scan for malicious package behavior and install-script risk when `SOCKET_SECURITY_API_KEY` and `SOCKET_ORG` are set in GitHub.
 
 ## Generated Project Documentation
 
@@ -166,4 +166,4 @@ Every generated app receives `docs/production-setup.md`. That file is tailored t
 - The release workflow publishes from the protected `npm-publish` GitHub environment with npm provenance.
 - Release tarballs and SHA-256 checksums are attached to GitHub releases.
 - `SECURITY.md` defines vulnerability reporting expectations.
-- `.github/workflows/socket.yml` runs a pinned Socket CLI policy scan when `SOCKET_SECURITY_API_KEY` is configured.
+- `.github/workflows/socket.yml` runs a pinned Socket CLI policy scan when `SOCKET_SECURITY_API_KEY` and `SOCKET_ORG` are configured.
