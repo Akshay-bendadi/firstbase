@@ -29,7 +29,49 @@ function createFolder(folder: string): void {
   }
 }
 
-function ensureEmptyTarget(projectPath: string): void {
+function stripAnsi(value: string): string {
+  return value.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
+}
+
+function sanitizeProjectName(projectName: string): string {
+  const normalized = stripAnsi(projectName).trim();
+
+  if (!normalized) {
+    throw new Error("Project name is required.");
+  }
+
+  if (normalized.length > 80) {
+    throw new Error("Project name must be 80 characters or fewer.");
+  }
+
+  if (normalized.includes("\0") || normalized.includes("/") || normalized.includes("\\") || normalized.includes("..")) {
+    throw new Error("Project name cannot contain path traversal characters.");
+  }
+
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(normalized)) {
+    throw new Error("Project name can only contain letters, numbers, dashes, and underscores, and must start with a letter or number.");
+  }
+
+  const reservedNames = new Set([".", "..", "node_modules", "dist", "build", ".git"]);
+  if (reservedNames.has(normalized.toLowerCase())) {
+    throw new Error("Project name is reserved. Choose a different name.");
+  }
+
+  return normalized;
+}
+
+function resolveSafeProjectPath(baseDir: string, projectName: string): string {
+  const basePath = path.resolve(baseDir);
+  const outputPath = path.resolve(basePath, projectName);
+
+  if (outputPath !== basePath && !outputPath.startsWith(`${basePath}${path.sep}`)) {
+    throw new Error("Invalid project name. Refusing to write outside the current directory.");
+  }
+
+  return outputPath;
+}
+
+function ensureEmptyTarget(projectPath: string, projectName: string): void {
   if (!fs.existsSync(projectPath)) {
     return;
   }
@@ -37,7 +79,7 @@ function ensureEmptyTarget(projectPath: string): void {
   const entries = fs.readdirSync(projectPath).filter((entry) => entry !== ".DS_Store");
   if (entries.length > 0) {
     throw new Error(
-      `Target directory already exists and is not empty: ${projectPath}. Remove it or choose a new project name before scaffolding.`
+      `Target directory already exists and is not empty: ${projectName}. Remove it or choose a new project name before scaffolding.`
     );
   }
 }
@@ -50,9 +92,11 @@ async function runCommand(
     env?: NodeJS.ProcessEnv;
     cwd?: string;
     loadingMessage?: string;
+    timeoutMs?: number;
   } = {}
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
+    const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env,
@@ -71,8 +115,41 @@ async function runCommand(
     }, 120);
     process.stdout.write(`\r${chalk.magenta(`${statusIcon} ${loadingMessage} ${spinnerFrames[0]}`)}`);
 
-    child.on("error", reject);
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearInterval(spinner);
+      process.stdout.write(`\r${chalk.red(`${statusIcon} ${loadingMessage} timed out`)}\n`);
+      child.kill("SIGTERM");
+      setTimeout(() => {
+        if (child.exitCode === null) {
+          child.kill("SIGKILL");
+        }
+      }, 5_000);
+      reject(new Error(`${command} timed out after ${Math.round(timeoutMs / 1000)}s`));
+    }, timeoutMs);
+
+    child.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
+      clearInterval(spinner);
+      reject(error);
+    });
     child.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
       clearInterval(spinner);
       process.stdout.write(`\r${chalk.magenta(`${statusIcon} ${loadingMessage}`)}\n`);
       if (code === 0) {
@@ -85,7 +162,48 @@ async function runCommand(
 }
 
 function npmInstallArgs(packages: string[], dev = false): string[] {
-  return ["install", "--no-audit", "--no-fund", "--silent", ...(dev ? ["-D"] : []), ...packages];
+  return ["install", "--save-exact", "--no-audit", "--no-fund", "--silent", ...(dev ? ["-D"] : []), ...packages];
+}
+
+const PACKAGE_VERSIONS = {
+  createNextApp: "16.2.4",
+  createVite: "9.0.5",
+  next: "16.2.4",
+  react: "19.2.5",
+  reactDom: "19.2.5",
+  vite: "8.0.9",
+  viteReactPlugin: "6.0.1",
+  tailwindcss: "3.4.17",
+  postcss: "8.5.10",
+  autoprefixer: "10.4.21",
+  axios: "1.15.0",
+  lucideReact: "1.8.0",
+  classVarianceAuthority: "0.7.1",
+  clsx: "2.1.1",
+  tailwindMerge: "3.5.0",
+  tailwindcssAnimate: "1.0.7",
+  husky: "9.1.7",
+  prettier: "3.8.3",
+  prettierSortImports: "6.0.2",
+  reactQuery: "5.99.0",
+  reactHookForm: "7.72.1",
+  zod: "4.3.6",
+  hookformResolvers: "5.2.2",
+  sonner: "2.0.7",
+  vitest: "4.1.4",
+  jsdom: "29.0.2",
+  testingLibraryReact: "16.3.2",
+  testingLibraryJestDom: "6.9.1",
+  typescript: "5.9.3",
+  typesNode: "22.19.17",
+  typesReact: "19.2.14",
+  typesReactDom: "19.2.3",
+  eslint: "10.2.1",
+  socketCli: "1.1.85",
+} as const;
+
+function versionedPackage(packageName: string, version: string): string {
+  return `${packageName}@${version}`;
 }
 
 function createFolders(projectPath: string, framework: Answers["framework"]): void {
@@ -170,16 +288,22 @@ function makeExecutable(filePath: string): void {
   }
 }
 
-function checkScriptFor(framework: Answers["framework"]): string {
-  return framework === "next"
-    ? "npm run lint && npm run format:check && npm run build"
-    : "npm run format:check && npm run build";
+function checkScriptFor(framework: Answers["framework"], includeTests: boolean): string {
+  const commands = framework === "next"
+    ? ["npm run lint", "npm run format:check"]
+    : ["npm run format:check"];
+
+  if (includeTests) {
+    commands.push("npm run test");
+  }
+
+  commands.push("npm run build");
+  return commands.join(" && ");
 }
 
-function advancedCheckScriptFor(framework: Answers["framework"]): string {
-  return framework === "next"
-    ? "npm run lint && npm run format:check && npm run test && npm run build"
-    : "npm run format:check && npm run test && npm run build";
+function nodeEngineFor(answers: Answers): string {
+  void answers;
+  return ">=20.19.0";
 }
 
 function formatDuration(totalMs: number): string {
@@ -202,7 +326,11 @@ function folderSizeInMb(folderPath: string): number {
       return;
     }
 
-    const stats = fs.statSync(currentPath);
+    const stats = fs.lstatSync(currentPath);
+    if (stats.isSymbolicLink()) {
+      return;
+    }
+
     if (stats.isDirectory()) {
       for (const entry of fs.readdirSync(currentPath)) {
         walk(path.join(currentPath, entry));
@@ -242,9 +370,206 @@ function advancedFeaturesList(answers: Answers): string[] {
   if (answers.toasts) features.push("Toast system");
   if (answers.i18n) features.push("Language support");
   if (answers.seo) features.push("SEO metadata");
-  if (answers.tests) features.push("Test baseline");
+  if (answers.tests) features.push("Test setup");
 
   return features;
+}
+
+type PackageManifestItem = {
+  name: string;
+  version: string;
+  purpose: string;
+};
+
+function packageManifestItems(answers: Answers): PackageManifestItem[] {
+  const items: PackageManifestItem[] = [
+    {
+      name: answers.framework === "next" ? "create-next-app" : "create-vite",
+      version: answers.framework === "next" ? PACKAGE_VERSIONS.createNextApp : PACKAGE_VERSIONS.createVite,
+      purpose: "Project bootstrap command",
+    },
+    {
+      name: answers.framework === "next" ? "next" : "vite",
+      version: answers.framework === "next" ? PACKAGE_VERSIONS.next : PACKAGE_VERSIONS.vite,
+      purpose: answers.framework === "next" ? "Application framework" : "Development server and bundler",
+    },
+    { name: "react", version: PACKAGE_VERSIONS.react, purpose: "UI runtime" },
+    { name: "react-dom", version: PACKAGE_VERSIONS.reactDom, purpose: "DOM renderer" },
+    { name: "tailwindcss", version: PACKAGE_VERSIONS.tailwindcss, purpose: "Utility-first styling" },
+    { name: "postcss", version: PACKAGE_VERSIONS.postcss, purpose: "Tailwind processing pipeline" },
+    { name: "autoprefixer", version: PACKAGE_VERSIONS.autoprefixer, purpose: "CSS vendor prefixing" },
+    { name: "axios", version: PACKAGE_VERSIONS.axios, purpose: "API client" },
+    { name: "prettier", version: PACKAGE_VERSIONS.prettier, purpose: "Code formatting" },
+    {
+      name: "@trivago/prettier-plugin-sort-imports",
+      version: PACKAGE_VERSIONS.prettierSortImports,
+      purpose: "Deterministic import ordering",
+    },
+  ];
+
+  if (answers.framework === "next") {
+    items.push(
+      { name: "eslint", version: PACKAGE_VERSIONS.eslint, purpose: "Next.js lint command support" },
+      { name: "eslint-config-next", version: PACKAGE_VERSIONS.next, purpose: "Next.js lint rules" }
+    );
+  } else {
+    items.push({ name: "@vitejs/plugin-react", version: PACKAGE_VERSIONS.viteReactPlugin, purpose: "React Fast Refresh plugin for Vite" });
+  }
+
+  if (answers.framework === "next" || answers.uiLibrary === "shadcn") {
+    items.push({ name: "lucide-react", version: PACKAGE_VERSIONS.lucideReact, purpose: "Icon primitives" });
+  }
+
+  if (answers.language === "ts") {
+    items.push(
+      { name: "typescript", version: PACKAGE_VERSIONS.typescript, purpose: "Type checking" },
+      { name: "@types/node", version: PACKAGE_VERSIONS.typesNode, purpose: "Node.js type definitions" },
+      { name: "@types/react", version: PACKAGE_VERSIONS.typesReact, purpose: "React type definitions" },
+      { name: "@types/react-dom", version: PACKAGE_VERSIONS.typesReactDom, purpose: "React DOM type definitions" }
+    );
+  }
+
+  if (answers.setupHusky) {
+    items.push({ name: "husky", version: PACKAGE_VERSIONS.husky, purpose: "Git pre-commit quality gate" });
+  }
+
+  if (answers.uiLibrary === "shadcn") {
+    items.push(
+      { name: "class-variance-authority", version: PACKAGE_VERSIONS.classVarianceAuthority, purpose: "Variant-ready UI primitives" },
+      { name: "clsx", version: PACKAGE_VERSIONS.clsx, purpose: "Conditional class composition" },
+      { name: "tailwind-merge", version: PACKAGE_VERSIONS.tailwindMerge, purpose: "Tailwind class conflict resolution" },
+      { name: "tailwindcss-animate", version: PACKAGE_VERSIONS.tailwindcssAnimate, purpose: "Animation utilities for shadcn-style components" }
+    );
+  }
+
+  if (answers.reactQuery) {
+    items.push({ name: "@tanstack/react-query", version: PACKAGE_VERSIONS.reactQuery, purpose: "Server state cache and provider" });
+  }
+
+  if (answers.forms) {
+    items.push(
+      { name: "react-hook-form", version: PACKAGE_VERSIONS.reactHookForm, purpose: "Form state management" },
+      { name: "zod", version: PACKAGE_VERSIONS.zod, purpose: "Schema validation" },
+      { name: "@hookform/resolvers", version: PACKAGE_VERSIONS.hookformResolvers, purpose: "Zod resolver for React Hook Form" }
+    );
+  }
+
+  if (answers.toasts) {
+    items.push({ name: "sonner", version: PACKAGE_VERSIONS.sonner, purpose: "Toast notifications" });
+  }
+
+  if (answers.tests) {
+    items.push(
+      { name: "vitest", version: PACKAGE_VERSIONS.vitest, purpose: "Unit and component test runner" },
+      { name: "jsdom", version: PACKAGE_VERSIONS.jsdom, purpose: "DOM environment for tests" },
+      { name: "@testing-library/react", version: PACKAGE_VERSIONS.testingLibraryReact, purpose: "React component testing" },
+      { name: "@testing-library/jest-dom", version: PACKAGE_VERSIONS.testingLibraryJestDom, purpose: "DOM assertions" }
+    );
+  }
+
+  items.push({ name: "socket", version: PACKAGE_VERSIONS.socketCli, purpose: "Optional Socket Security CI policy scan" });
+
+  return items;
+}
+
+function installedVersionLines(answers: Answers): string[] {
+  return packageManifestItems(answers).map(
+    (item) => `- ${item.name} \`${item.version}\` - ${item.purpose}`
+  );
+}
+
+function projectSetupDocsContent(answers: Answers): string {
+  const advancedFeatures = advancedFeaturesList(answers);
+  const packageRows = packageManifestItems(answers)
+    .map((item) => `| ${item.name} | ${item.version} | ${item.purpose} |`)
+    .join("\n");
+  const shadcnComponents = ["button", "card", "badge", "input", "label", "textarea", "separator"];
+  const qualityCommands = [
+    "`npm run format` - write formatted files",
+    "`npm run format:check` - verify formatting",
+    answers.framework === "next" ? "`npm run lint` - run Next.js linting" : "",
+    answers.tests ? "`npm run test` - run Vitest once for CI/Husky" : "",
+    answers.tests ? "`npm run test:watch` - run Vitest in watch mode" : "",
+    "`npm run build` - create the production build",
+    "`npm run check` - run the full quality gate used by CI and Husky",
+  ].filter(Boolean);
+
+  return `# Production Setup
+
+This project was generated by Quicky Setup with the selected stack documented below.
+
+## Stack Decisions
+
+- Project: ${answers.projectName}
+- Framework: ${frameworkLabel(answers)}
+- Language: ${answers.language === "ts" ? "TypeScript" : "JavaScript"}
+- Routing: ${routingLabel(answers)}
+- UI library: ${answers.uiLibrary === "shadcn" ? "shadcn/ui-compatible local primitives" : "None"}
+- Husky: ${answers.setupHusky ? "Enabled" : "Disabled"}
+- Node engine: ${nodeEngineFor(answers)}
+- Advanced modules: ${advancedFeatures.length ? advancedFeatures.join(", ") : "None"}
+
+## Package Versions
+
+| Package | Version | Purpose |
+| --- | --- | --- |
+${packageRows}
+
+## Integration Steps
+
+1. Install dependencies with \`npm install\` when cloning this project elsewhere.
+2. Copy \`.env.example\` to \`.env.local\` and set the API base URL.
+3. Start local development with \`npm run dev\`.
+4. Run \`npm run check\` before opening a pull request or shipping.
+5. Use \`npm run build\` to verify the production bundle independently.
+6. Run \`npm audit --audit-level=high\` before releases; CI already runs this.
+
+## Quality Gate
+
+${qualityCommands.map((command) => `- ${command}`).join("\n")}
+- \`npm audit --audit-level=high\` - run in CI only, not in Husky, to avoid network calls during local commits
+- Socket Security policy scan - runs in \`.github/workflows/socket.yml\` only when \`SOCKET_SECURITY_API_KEY\` is configured
+
+${answers.setupHusky ? "Husky is configured to run `npm run check` from `.husky/pre-commit`, so commits fail if format, tests, lint, or build fail. The default hook does not make network requests and does not interpolate user input.\n" : "Husky was not enabled for this scaffold. CI still runs the generated quality gate and dependency audit.\n"}
+## shadcn/ui Setup
+
+${answers.uiLibrary === "shadcn"
+  ? `The scaffold writes \`components.json\`, \`lib/utils\`, and these local UI primitives: ${shadcnComponents.map((component) => `\`${component}\``).join(", ")}. They are intentionally generated as source files so you can tune the design system without waiting on a registry call.`
+  : "shadcn/ui was not selected. The starter uses direct Tailwind markup and can be upgraded later by adding `components.json`, `lib/utils`, and local UI primitives."}
+
+## Advanced Modules
+
+${advancedFeatures.length
+  ? advancedFeatures.map((feature) => `- ${feature}`).join("\n")
+  : "- No advanced modules were selected."}
+
+## Testing Strategy
+
+${answers.tests
+  ? "Vitest is configured with jsdom and Testing Library. The generated tests cover the theme toggle and any selected interactive modules such as auth and forms."
+  : "Tests were not selected. Re-run the scaffold with advanced test setup when you want Vitest, jsdom, and Testing Library wiring generated automatically."}
+
+## Security Defaults
+
+- Dependencies are installed with exact versions and \`--save-exact\`.
+- CI runs \`npm audit --audit-level=high\` before the quality gate.
+- CI includes GitHub Dependency Review and an optional pinned Socket Security scan.
+- Secret-bearing files such as \`.env\`, \`.npmrc\`, \`*.pem\`, \`*.key\`, and service account JSON files are ignored by git.
+- \`.env.example\` uses fake placeholder values and must not contain real keys.
+- The API client validates the public API base URL, sets a 15 second timeout, and blocks cross-origin absolute requests from that client instance.
+${answers.framework === "next" ? "- Next.js security headers, including a baseline Content Security Policy, are configured in `next.config`.\n" : ""}
+
+## Generated Structure
+
+- API client and env helper: ${answers.framework === "react" ? "`src/lib/`" : "`lib/`"}
+- Shared components: ${answers.framework === "react" ? "`src/components/`" : "`components/`"}
+- Theme entry: ${answers.framework === "react" ? "`src/index.css`" : answers.routing === "app" ? "`app/globals.css`" : "`styles/globals.css`"}
+- CI workflow: \`.github/workflows/ci.yml\`
+- Node version markers: \`.nvmrc\` and \`.node-version\`
+- Setup documentation: \`docs/production-setup.md\`
+
+Keep this file updated when package versions, quality scripts, or generated modules change.
+`;
 }
 
 function projectReadmeContent(answers: Answers): string {
@@ -256,6 +581,7 @@ function projectReadmeContent(answers: Answers): string {
     `Husky: ${answers.setupHusky ? "Enabled" : "Disabled"}`,
   ];
   const advancedFeatures = advancedFeaturesList(answers);
+  const installedVersions = installedVersionLines(answers);
   const starterStructure =
     answers.framework === "react"
       ? ["src/components/", "src/lib/", "src/pages/", "src/routes/"]
@@ -273,13 +599,18 @@ ${techStack.map((item) => `- ${item}`).join("\n")}
 
 ## Included
 
-- Tailwind baseline with a designed landing page
+- Tailwind foundation with a designed landing page
 - Dark/light theme toggle
 - API client with interceptor and env files
 - Production gitignore file
 - First commit prepared for you
-${answers.uiLibrary === "shadcn" ? "- shadcn/ui component baseline" : "- Plain HTML fallback when shadcn is not selected"}
+- Production setup documentation in \`docs/production-setup.md\`
+${answers.uiLibrary === "shadcn" ? "- shadcn/ui component set" : "- Plain HTML fallback when shadcn is not selected"}
 ${advancedFeatures.length ? `- Advanced modules: ${advancedFeatures.join(", ")}` : ""}
+
+## Installed Versions
+
+${installedVersions.join("\n")}
 
 ## Start
 
@@ -287,7 +618,13 @@ ${advancedFeatures.length ? `- Advanced modules: ${advancedFeatures.join(", ")}`
 npm run dev
 \`\`\`
 
-${answers.framework === "next" ? "## Next.js Notes\n\n- App Router and Pages Router are supported from the scaffold.\n- Use `npm run dev:turbo` if you want the turbo dev server.\n\n" : ""}
+## Quality Gate
+
+\`\`\`bash
+npm run check
+\`\`\`
+
+${answers.framework === "next" ? "## Next.js Notes\n\n- App Router and Pages Router are supported from the scaffold.\n- Next.js 16 uses Turbopack by default for `npm run dev` and `npm run build`.\n- Use `npm run dev:webpack` only if you need to debug with webpack.\n\n" : ""}
 ## Project Layout
 
 ${starterStructure.map((item) => `- ${item}`).join("\n")}
@@ -304,11 +641,11 @@ Generated with the first commit already prepared.
 
 export async function scaffoldProject(answers: Answers): Promise<void> {
   const startedAt = Date.now();
-  // Ensure we're using the raw project name without any chalk formatting
-  const rawProjectName = answers.projectName.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
-  const projectPath = path.resolve(process.cwd(), rawProjectName);
+  const rawProjectName = sanitizeProjectName(answers.projectName);
+  answers = { ...answers, projectName: rawProjectName };
+  const projectPath = resolveSafeProjectPath(process.cwd(), rawProjectName);
 
-  ensureEmptyTarget(projectPath);
+  ensureEmptyTarget(projectPath, rawProjectName);
   // Create the output folder up front so framework bootstrappers have a stable target.
   createFolder(projectPath);
 
@@ -320,30 +657,34 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
   if (answers.framework === "next") {
 
     // Install specific stable version of Next.js
-    const nextVersion = "14.2.3";
+    const nextVersion = PACKAGE_VERSIONS.next;
     const args = [
-      `create-next-app@${nextVersion}`,
+      versionedPackage("create-next-app", PACKAGE_VERSIONS.createNextApp),
       ".",
       "--import-alias",
       "@/*",
       "--eslint",
       "--tailwind",
+      "--no-react-compiler",
+      "--no-src-dir",
       "--use-npm"
     ];
 
     // Add React and React DOM dependencies with compatible versions
     const dependencies = {
-      "next": `^${nextVersion}`,
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "axios": "^1.11.0",
-      "lucide-react": "^0.390.0"
+      "next": nextVersion,
+      "react": PACKAGE_VERSIONS.react,
+      "react-dom": PACKAGE_VERSIONS.reactDom,
+      "axios": PACKAGE_VERSIONS.axios,
+      "lucide-react": PACKAGE_VERSIONS.lucideReact
     };
 
     args.push(answers.language === "ts" ? "--typescript" : "--js");
 
     if (answers.routing === "app") {
       args.push("--app");
+    } else {
+      args.push("--no-app");
     }
 
     await runCommand("npx", ["--yes", ...args], {
@@ -376,38 +717,51 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
 
     packageJson.devDependencies = {
       ...packageJson.devDependencies,
-      "@types/node": "^20.11.0",
-      "@types/react": "^18.2.0",
-      "@types/react-dom": "^18.2.0",
-      "autoprefixer": "^10.4.0",
-      "eslint": "^8.0.0",
-      "eslint-config-next": `^${nextVersion}`,
-      "tailwindcss": "^3.4.0",
-      "typescript": "^5.0.0"
+      "autoprefixer": PACKAGE_VERSIONS.autoprefixer,
+      "eslint": PACKAGE_VERSIONS.eslint,
+      "eslint-config-next": nextVersion,
+      "postcss": PACKAGE_VERSIONS.postcss,
+      "tailwindcss": PACKAGE_VERSIONS.tailwindcss,
     };
+    delete packageJson.devDependencies["@tailwindcss/postcss"];
+
+    if (answers.language === "ts") {
+      packageJson.devDependencies = {
+        ...packageJson.devDependencies,
+        "@types/node": PACKAGE_VERSIONS.typesNode,
+        "@types/react": PACKAGE_VERSIONS.typesReact,
+        "@types/react-dom": PACKAGE_VERSIONS.typesReactDom,
+        "typescript": PACKAGE_VERSIONS.typescript,
+      };
+    }
 
     packageJson.scripts = packageJson.scripts || {};
-    packageJson.scripts["dev"] = "next dev --turbo";
+    packageJson.scripts["dev"] = "next dev";
     packageJson.scripts["build"] = "next build";
     packageJson.scripts["start"] = "next start";
-    packageJson.scripts["lint"] = "next lint";
-    packageJson.scripts["dev:turbo"] = "next dev --turbo";
+    packageJson.scripts["lint"] = "eslint .";
+    packageJson.scripts["dev:webpack"] = "next dev --webpack";
     packageJson.scripts["format"] = "prettier . --write";
     packageJson.scripts["format:check"] = "prettier . --check";
+    packageJson.scripts["check"] = checkScriptFor("next", answers.tests);
     if (answers.setupHusky) {
-      packageJson.scripts["check"] = checkScriptFor("next");
+      packageJson.scripts["prepare"] = "husky";
     }
-    if (answers.advancedMode === "go_advanced") {
-      if (answers.tests) {
-        packageJson.scripts["test"] = "vitest";
-        packageJson.scripts["test:watch"] = "vitest --watch";
-        packageJson.scripts["check"] = advancedCheckScriptFor("next");
-      }
+    if (answers.tests) {
+      packageJson.scripts["test"] = "vitest --run";
+      packageJson.scripts["test:watch"] = "vitest";
     }
+    packageJson.engines = {
+      ...packageJson.engines,
+      node: nodeEngineFor(answers),
+    };
 
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
-    await runCommand("npm", npmInstallArgs(["axios", "lucide-react"]), {
+    await runCommand("npm", npmInstallArgs([
+      versionedPackage("axios", PACKAGE_VERSIONS.axios),
+      versionedPackage("lucide-react", PACKAGE_VERSIONS.lucideReact),
+    ]), {
       stdio: "ignore",
       cwd: projectPath,
       loadingMessage: "Installing base dependencies",
@@ -417,7 +771,7 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
       "npx",
       [
         "--yes",
-        "create-vite@5.2.0",
+        versionedPackage("create-vite", PACKAGE_VERSIONS.createVite),
         ".",
         "--template",
         answers.language === "ts" ? "react-ts" : "react",
@@ -441,25 +795,49 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
     packageJson.scripts = packageJson.scripts || {};
     packageJson.scripts["format"] = "prettier . --write";
     packageJson.scripts["format:check"] = "prettier . --check";
+    packageJson.scripts["check"] = checkScriptFor("react", answers.tests);
     if (answers.setupHusky) {
-      packageJson.scripts["check"] = checkScriptFor("react");
+      packageJson.scripts["prepare"] = "husky";
     }
-    if (answers.advancedMode === "go_advanced") {
-      if (answers.tests) {
-        packageJson.scripts["test"] = "vitest";
-        packageJson.scripts["test:watch"] = "vitest --watch";
-        packageJson.scripts["check"] = advancedCheckScriptFor("react");
-      }
+    if (answers.tests) {
+      packageJson.scripts["test"] = "vitest --run";
+      packageJson.scripts["test:watch"] = "vitest";
     }
+    packageJson.dependencies = {
+      ...packageJson.dependencies,
+      "react": PACKAGE_VERSIONS.react,
+      "react-dom": PACKAGE_VERSIONS.reactDom,
+    };
+    packageJson.devDependencies = {
+      ...packageJson.devDependencies,
+      "@vitejs/plugin-react": PACKAGE_VERSIONS.viteReactPlugin,
+      "vite": PACKAGE_VERSIONS.vite,
+    };
+    if (answers.language === "ts") {
+      packageJson.devDependencies = {
+        ...packageJson.devDependencies,
+        "@types/react": PACKAGE_VERSIONS.typesReact,
+        "@types/react-dom": PACKAGE_VERSIONS.typesReactDom,
+        "typescript": PACKAGE_VERSIONS.typescript,
+      };
+    }
+    packageJson.engines = {
+      ...packageJson.engines,
+      node: nodeEngineFor(answers),
+    };
 
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
-    await runCommand("npm", npmInstallArgs(["tailwindcss@^3.4.17", "postcss", "autoprefixer"], true), {
+    await runCommand("npm", npmInstallArgs([
+      versionedPackage("tailwindcss", PACKAGE_VERSIONS.tailwindcss),
+      versionedPackage("postcss", PACKAGE_VERSIONS.postcss),
+      versionedPackage("autoprefixer", PACKAGE_VERSIONS.autoprefixer),
+    ], true), {
       stdio: "ignore",
       cwd: projectPath,
       loadingMessage: "Installing theme dependencies",
     });
-    await runCommand("npm", npmInstallArgs(["axios"]), {
+    await runCommand("npm", npmInstallArgs([versionedPackage("axios", PACKAGE_VERSIONS.axios)]), {
       stdio: "ignore",
       cwd: projectPath,
       loadingMessage: "Installing API client",
@@ -468,28 +846,30 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
   }
 
   if (answers.uiLibrary === "shadcn") {
-    await log.step("Installing shadcn baseline packages");
+    await log.step("Installing shadcn starter packages");
     await runCommand("npm", npmInstallArgs([
-      "lucide-react",
-      "clsx",
-      "tailwind-merge",
-      "class-variance-authority",
+      versionedPackage("lucide-react", PACKAGE_VERSIONS.lucideReact),
+      versionedPackage("clsx", PACKAGE_VERSIONS.clsx),
+      versionedPackage("tailwind-merge", PACKAGE_VERSIONS.tailwindMerge),
+      versionedPackage("class-variance-authority", PACKAGE_VERSIONS.classVarianceAuthority),
     ]), {
       stdio: "ignore",
       cwd: projectPath,
-      loadingMessage: "Installing shadcn baseline",
+      loadingMessage: "Installing shadcn starter",
     });
-    await runCommand("npm", npmInstallArgs(["tailwindcss-animate"], true), {
+    await runCommand("npm", npmInstallArgs([
+      versionedPackage("tailwindcss-animate", PACKAGE_VERSIONS.tailwindcssAnimate),
+    ], true), {
       stdio: "ignore",
       cwd: projectPath,
       loadingMessage: "Installing shadcn animation plugin",
     });
-    log.success("shadcn baseline installed");
+    log.success("shadcn starter installed");
   }
 
   if (answers.setupHusky) {
     await log.step("Installing Husky");
-    await runCommand("npm", npmInstallArgs(["husky"], true), {
+    await runCommand("npm", npmInstallArgs([versionedPackage("husky", PACKAGE_VERSIONS.husky)], true), {
       stdio: "ignore",
       cwd: projectPath,
       loadingMessage: "Installing Husky",
@@ -499,8 +879,8 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
 
   await log.step("Installing formatting and CI tooling");
   await runCommand("npm", npmInstallArgs([
-    "prettier",
-    "@trivago/prettier-plugin-sort-imports",
+    versionedPackage("prettier", PACKAGE_VERSIONS.prettier),
+    versionedPackage("@trivago/prettier-plugin-sort-imports", PACKAGE_VERSIONS.prettierSortImports),
   ], true), {
     stdio: "ignore",
     cwd: projectPath,
@@ -540,7 +920,7 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
       answers.forms ? "Forms stack" : "",
       answers.toasts ? "Toast system" : "",
       answers.i18n ? "Language support" : "",
-      answers.tests ? "Vitest baseline" : "",
+      answers.tests ? "Vitest setup" : "",
     ].filter(Boolean) as string[],
     answers.i18n
   );
@@ -553,7 +933,7 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
 
   await log.step("Writing quality tooling");
   const { scaffoldQualityFiles } = await import("./scaffolders/qualitySetup.js");
-  scaffoldQualityFiles(projectPath, answers.framework);
+  scaffoldQualityFiles(projectPath, answers.framework, answers.tests, answers.language);
   log.success("Quality tooling added");
 
   if (answers.advancedMode === "go_advanced") {
@@ -566,7 +946,9 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
   if (answers.advancedMode === "go_advanced") {
     if (answers.reactQuery) {
       await log.step("Installing React Query");
-      await runCommand("npm", npmInstallArgs(["@tanstack/react-query"]), {
+      await runCommand("npm", npmInstallArgs([
+        versionedPackage("@tanstack/react-query", PACKAGE_VERSIONS.reactQuery),
+      ]), {
         stdio: "ignore",
         cwd: projectPath,
         loadingMessage: "Installing React Query",
@@ -576,7 +958,11 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
 
     if (answers.forms) {
       await log.step("Installing forms stack");
-      await runCommand("npm", npmInstallArgs(["react-hook-form", "zod", "@hookform/resolvers"]), {
+      await runCommand("npm", npmInstallArgs([
+        versionedPackage("react-hook-form", PACKAGE_VERSIONS.reactHookForm),
+        versionedPackage("zod", PACKAGE_VERSIONS.zod),
+        versionedPackage("@hookform/resolvers", PACKAGE_VERSIONS.hookformResolvers),
+      ]), {
         stdio: "ignore",
         cwd: projectPath,
         loadingMessage: "Installing forms stack",
@@ -586,7 +972,7 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
 
     if (answers.toasts) {
       await log.step("Installing toast system");
-      await runCommand("npm", npmInstallArgs(["sonner"]), {
+      await runCommand("npm", npmInstallArgs([versionedPackage("sonner", PACKAGE_VERSIONS.sonner)]), {
         stdio: "ignore",
         cwd: projectPath,
         loadingMessage: "Installing toast system",
@@ -595,18 +981,18 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
     }
 
     if (answers.tests) {
-      await log.step("Installing test baseline");
+      await log.step("Installing test setup");
       await runCommand("npm", npmInstallArgs([
-        "vitest",
-        "jsdom",
-        "@testing-library/react",
-        "@testing-library/jest-dom",
+        versionedPackage("vitest", PACKAGE_VERSIONS.vitest),
+        versionedPackage("jsdom", PACKAGE_VERSIONS.jsdom),
+        versionedPackage("@testing-library/react", PACKAGE_VERSIONS.testingLibraryReact),
+        versionedPackage("@testing-library/jest-dom", PACKAGE_VERSIONS.testingLibraryJestDom),
       ], true), {
         stdio: "ignore",
         cwd: projectPath,
-        loadingMessage: "Installing test baseline",
+        loadingMessage: "Installing test setup",
       });
-      log.success("Test baseline installed");
+      log.success("Test setup installed");
     }
   }
 
@@ -615,6 +1001,7 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
 
   // Readme and git init
   fs.writeFileSync(path.join(projectPath, "README.md"), projectReadmeContent(answers));
+  writeFileIfChanged(path.join(projectPath, "docs", "production-setup.md"), projectSetupDocsContent(answers));
   await runCommand("git", ["init"], {
     stdio: "ignore",
     cwd: projectPath,
@@ -647,7 +1034,7 @@ export async function scaffoldProject(answers: Answers): Promise<void> {
   log.info(`cd ${answers.projectName}`);
   if (answers.framework === "next") {
     log.info("npm run dev to start the development server");
-    log.info("npm run dev:turbo to start with TurboPack");
+    log.info("Next.js 16 uses Turbopack by default; use npm run dev:webpack only when needed");
   } else {
     log.info("npm run dev");
   }

@@ -1,11 +1,12 @@
 # Quicky Setup
 
-CLI scaffold for starting a React or Next.js app with a production-oriented Tailwind baseline.
+CLI scaffold for starting a React or Next.js app with a production-oriented Tailwind foundation.
 
 ## What it does
 
 - Creates a new project folder from an interactive prompt
 - Supports `Next.js` and `React + Vite`
+- Targets the current stable React 19 and Next.js 16 lines
 - Writes a Tailwind theme, starter page, and shared CSS variables
 - Adds optional shadcn-ready component wiring
 - Adds an optional Husky pre-commit hook
@@ -13,11 +14,15 @@ CLI scaffold for starting a React or Next.js app with a production-oriented Tail
 - Generates `.env.local` and `.env.example`
 - Generates a production `.gitignore`
 - Adds Prettier with import sorting
-- Adds a GitHub Actions CI workflow
+- Adds a GitHub Actions CI workflow with dependency audit
+- Adds an optional Socket Security workflow when `SOCKET_SECURITY_API_KEY` is configured
 - Generates a production `.gitignore` with build, cache, log, editor, and env entries
 - Offers a fast default setup or an advanced mode with React Query, SEO metadata, tests, and language support
 - Advanced mode can also add auth scaffolding, validated forms, a toast system, and an i18n language switcher
 - Generates a stack-aware README inside the created app so the selected tech choices are documented automatically
+- Includes a version manifest in the generated app README so installed package versions are visible after setup
+- Generates `docs/production-setup.md` inside each app with package versions, selected modules, quality commands, and integration steps
+- Adds secure defaults for project-name validation, env placeholders, secret file ignores, Axios timeouts, Next.js security headers, and release guardrails
 - Generates a Vite alias config for React so shadcn-style imports work in the browser too
 - Uses animated CLI step messages
 
@@ -59,9 +64,9 @@ The prompts let you choose:
   - Toast system
   - Language support
   - SEO metadata for Next.js
-  - Test baseline
+  - Test setup
 
-## Generated baseline
+## Generated foundation
 
 The theme setup writes:
 
@@ -75,13 +80,15 @@ The theme setup writes:
 The optional shadcn setup writes:
 
 - `components.json`
-- `components/ui/button` and `components/ui/card`
+- `components/ui/button`, `components/ui/card`, `components/ui/badge`, `components/ui/input`, `components/ui/label`, `components/ui/textarea`, and `components/ui/separator`
 - `lib/utils` or `src/lib/utils`
 
 The optional Husky setup writes:
 
 - `prepare` and `check` scripts in the generated `package.json`
 - `.husky/pre-commit`
+- a pre-commit quality gate that runs `npm run check`
+- no network calls in the default hook
 
 The API client writes:
 
@@ -90,6 +97,8 @@ The API client writes:
 - `lib/env.js` or `lib/env.ts` for Next.js
 - `src/lib/env.js` or `src/lib/env.ts` for React + Vite
 - a basic response interceptor that redirects `401` responses to `/login`
+- a 15 second timeout
+- same-origin request enforcement for the configured API instance
 - `.env.local` and `.env.example` with the API base URL variable
 
 The formatting and CI setup writes:
@@ -97,7 +106,12 @@ The formatting and CI setup writes:
 - `.prettierrc.cjs`
 - `.prettierignore`
 - `.github/workflows/ci.yml`
+- `.github/workflows/socket.yml`
+- `.nvmrc` and `.node-version` pinned to Node `20.19.0`
+- `eslint.config.mjs` for Next.js projects
+- `next.config.*` with baseline security headers for Next.js projects
 - `format` and `format:check` scripts in the generated `package.json`
+- `check` script in the generated `package.json`
 - `.gitignore`
 
 The advanced setup can additionally write:
@@ -109,7 +123,14 @@ The advanced setup can additionally write:
 - `i18n` provider and language switcher
 - homepage feature sections that appear based on the advanced selections
 - `vitest.config.*`, `test/setup.*`, and a sample component test
+- selected-module tests for auth and forms when those modules are enabled
 - SEO metadata for Next.js App Router or Pages Router
+
+The generated app also receives:
+
+- `docs/production-setup.md`
+- a package version manifest tailored to the selected setup
+- integration steps for env setup, local development, tests, Husky, CI, and production builds
 
 ## Notes
 
@@ -124,6 +145,13 @@ The advanced setup can additionally write:
 - The generated homepage now includes an interactive showcase for auth, forms, and toasts.
 - The generated app README is tailored to the selected stack, features, and layout.
 - React + Vite projects now get a runtime `@` alias in `vite.config.*` plus matching shadcn alias config.
+- React projects target React `19.2.5`; Next.js projects target Next.js `16.2.4` and React `19.2.5`.
+- Next.js 16 uses Turbopack by default, and the generator uses `eslint .` instead of the removed `next lint` command.
+- Direct CLI package dependencies are pinned exactly, and generated app install commands use exact versions with `--save-exact`.
+- Generated CI runs `npm audit --audit-level=high`; Husky does not run audit so commits do not trigger network calls.
+- Generated Socket Security workflow runs only when `SOCKET_SECURITY_API_KEY` is configured and installs pinned `socket@1.1.85`.
+- npm publishing is guarded by CI-only release workflow checks, npm provenance, dry-run package inspection, and release checksums.
+- The CLI does not collect telemetry.
 - The CLI refuses to scaffold into a non-empty folder so stale files do not leak into new runs.
 - The CLI now prints a friendly error instead of a raw stack trace when setup fails.
 - If you want a clean fresh generation, delete the output folder and rerun the CLI.
