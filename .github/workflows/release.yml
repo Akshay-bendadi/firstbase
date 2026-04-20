@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Build and verify
+        run: npm run check
+
+      - name: Dry-run package contents
+        run: npm run pack:dry-run
+
+      - name: Pack release tarball
+        id: pack
+        run: |
+          package_file="$(npm pack --silent)"
+          shasum -a 256 "$package_file" > checksums.txt
+          echo "package_file=$package_file" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm with provenance
+        run: npm publish "${{ steps.pack.outputs.package_file }}" --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Attach checksums to GitHub release
+        run: gh release upload "${{ github.event.release.tag_name }}" "${{ steps.pack.outputs.package_file }}" checksums.txt --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

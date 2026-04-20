@@ -1,0 +1,36 @@
+# Never publish local configuration or secrets.
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.p8
+*.p12
+*.crt
+*.cer
+serviceAccount.json
+service-account.json
+*.serviceAccount.json
+*.service-account.json
+secrets.json
+secrets.*.json
+
+# Development and repository-only files.
+.git/
+.github/
+.vscode/
+.idea/
+coverage/
+node_modules/
+src/
+scripts/
+test/
+*.log
+*.tgz
+
+# Build inputs and local caches.
+tsconfig.json
+.DS_Store
+.eslintcache
+*.tsbuildinfo

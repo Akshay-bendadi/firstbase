@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type { Framework } from "../prompts.js";
+import type { Framework, Language } from "../prompts.js";
 
 function ensureDir(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -59,6 +59,22 @@ coverage
 .env.production
 .env.development
 .env.test
+!.env.example
+.npmrc
+*.pem
+*.key
+*.p8
+*.p12
+*.crt
+*.cer
+id_rsa
+id_ed25519
+serviceAccount.json
+service-account.json
+*.serviceAccount.json
+*.service-account.json
+secrets.json
+secrets.*.json
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -79,15 +95,9 @@ pnpm-debug.log*
 `;
 }
 
-function ciWorkflowContent(framework: Framework): string {
-  const extraChecks =
-    framework === "next"
-      ? `      - name: Lint
-        run: npm run lint
-
-`
-      : "";
-
+function ciWorkflowContent(framework: Framework, includeTests: boolean): string {
+  void framework;
+  void includeTests;
   return `name: CI
 
 on:
@@ -105,23 +115,160 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: npm
+
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
 
       - name: Install dependencies
         run: npm ci
 
-${extraChecks}      - name: Format check
-        run: npm run format:check
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
-      - name: Build
-        run: npm run build
+      - name: Quality gate
+        run: npm run check
 `;
 }
 
-export function scaffoldQualityFiles(projectPath: string, framework: Framework): void {
+function nodeVersionContent(): string {
+  return "20.19.0\n";
+}
+
+function socketWorkflowContent(): string {
+  return `name: Socket Security
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  socket:
+    if: \${{ secrets.SOCKET_SECURITY_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Install Socket CLI
+        run: npm install --global socket@1.1.85
+
+      - name: Run Socket policy scan
+        run: socket ci
+        env:
+          SOCKET_SECURITY_API_KEY: \${{ secrets.SOCKET_SECURITY_API_KEY }}
+`;
+}
+
+function eslintConfigContent(language: Language): string {
+  const typescriptImport = language === "ts" ? `import nextTypescript from "eslint-config-next/typescript";\n` : "";
+  const typescriptSpread = language === "ts" ? `  ...nextTypescript,\n` : "";
+
+  return `import nextVitals from "eslint-config-next/core-web-vitals";
+${typescriptImport}
+const eslintConfig = [
+  ...nextVitals,
+${typescriptSpread}  {
+    ignores: [
+      ".next/**",
+      "build/**",
+      "coverage/**",
+      "dist/**",
+      "node_modules/**",
+      "out/**",
+    ],
+  },
+];
+
+export default eslintConfig;
+`;
+}
+
+function nextSecurityConfigContent(language: Language): string {
+  const typeImport = language === "ts" ? `import type { NextConfig } from "next";\n\n` : "";
+  const typeAnnotation = language === "ts" ? ": NextConfig" : "";
+
+  return `${typeImport}const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https:",
+      "upgrade-insecure-requests",
+    ].join("; "),
+  },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
+const nextConfig${typeAnnotation} = {
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+`;
+}
+
+function writeNextSecurityConfig(projectPath: string, language: Language): void {
+  const configFile = language === "ts" ? "next.config.ts" : "next.config.mjs";
+  const staleFiles = ["next.config.js", "next.config.mjs", "next.config.ts"].filter(
+    (fileName) => fileName !== configFile
+  );
+
+  for (const fileName of staleFiles) {
+    const filePath = path.join(projectPath, fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
+  writeIfChanged(path.join(projectPath, configFile), nextSecurityConfigContent(language));
+}
+
+export function scaffoldQualityFiles(
+  projectPath: string,
+  framework: Framework,
+  includeTests = false,
+  language: Language = "ts"
+): void {
+  writeIfChanged(path.join(projectPath, ".nvmrc"), nodeVersionContent());
+  writeIfChanged(path.join(projectPath, ".node-version"), nodeVersionContent());
   writeIfChanged(path.join(projectPath, ".gitignore"), gitignoreContent());
   writeIfChanged(path.join(projectPath, ".prettierrc.cjs"), prettierConfigContent());
   writeIfChanged(path.join(projectPath, ".prettierignore"), prettierIgnoreContent());
-  writeIfChanged(path.join(projectPath, ".github", "workflows", "ci.yml"), ciWorkflowContent(framework));
+  writeIfChanged(path.join(projectPath, ".github", "workflows", "ci.yml"), ciWorkflowContent(framework, includeTests));
+  writeIfChanged(path.join(projectPath, ".github", "workflows", "socket.yml"), socketWorkflowContent());
+  if (framework === "next") {
+    writeIfChanged(path.join(projectPath, "eslint.config.mjs"), eslintConfigContent(language));
+    writeNextSecurityConfig(projectPath, language);
+  }
 }

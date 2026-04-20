@@ -16,6 +16,32 @@ function promptMessage(text: string): string {
   return `${style.prompt("◆")} ${style.highlight(text)}`;
 }
 
+function validateProjectName(value: string): true | string {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return "Project name is required.";
+  }
+
+  if (normalized.length > 80) {
+    return "Use 80 characters or fewer.";
+  }
+
+  if (normalized.includes("\0") || normalized.includes("/") || normalized.includes("\\") || normalized.includes("..")) {
+    return "Do not use path separators or traversal characters.";
+  }
+
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(normalized)) {
+    return "Use only letters, numbers, dashes, and underscores. Start with a letter or number.";
+  }
+
+  if (["node_modules", "dist", "build", ".git"].includes(normalized.toLowerCase())) {
+    return "That name is reserved.";
+  }
+
+  return true;
+}
+
 export interface Answers {
   projectName: string;
   framework: Framework;
@@ -40,6 +66,7 @@ export async function askQuestions(): Promise<Answers> {
       name: "projectName",
       message: promptMessage("Project name:"),
       initial: "my-app",
+      validate: validateProjectName,
       format: (val: string) => style.highlight(val),
       style: 'default',
       onState: (state) => {
@@ -148,7 +175,7 @@ export async function askQuestions(): Promise<Answers> {
       type: (prev: string, values: any) =>
         values.advancedMode === "go_advanced" ? "confirm" : null,
       name: "tests",
-      message: promptMessage("Add test baseline?"),
+      message: promptMessage("Add test setup?"),
       initial: true,
     },
   ]);

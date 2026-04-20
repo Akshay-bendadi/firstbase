@@ -214,11 +214,21 @@ function globalCssContent(): string {
 `;
 }
 
-function cnUtilityContent(): string {
-  return `import { clsx, type ClassValue } from "clsx";
+function cnUtilityContent(language: Language): string {
+  if (language === "ts") {
+    return `import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+`;
+  }
+
+  return `import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 `;
@@ -305,6 +315,211 @@ export function Card({ className, ...props }) {
     <div className={cn("rounded-3xl border border-white/10 bg-card/90 p-6 shadow-2xl backdrop-blur", className)} {...props}>
       {props.children}
     </div>
+  );
+}
+`;
+}
+
+function badgeComponentContent(language: Language): string {
+  if (language === "ts") {
+    return `import type { HTMLAttributes } from "react";
+import { cn } from "../../lib/utils";
+
+type BadgeProps = HTMLAttributes<HTMLDivElement> & {
+  variant?: "default" | "secondary" | "outline";
+};
+
+const variants = {
+  default: "border-transparent bg-primary text-primary-foreground",
+  secondary: "border-transparent bg-secondary text-secondary-foreground",
+  outline: "border-border text-foreground",
+} as const;
+
+export function Badge({ className, variant = "default", ...props }: BadgeProps) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] transition-colors",
+        variants[variant],
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+  }
+
+  return `import { cn } from "../../lib/utils";
+
+const variants = {
+  default: "border-transparent bg-primary text-primary-foreground",
+  secondary: "border-transparent bg-secondary text-secondary-foreground",
+  outline: "border-border text-foreground",
+};
+
+export function Badge({ className, variant = "default", ...props }) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] transition-colors",
+        variants[variant],
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+}
+
+function inputComponentContent(language: Language): string {
+  if (language === "ts") {
+    return `import type { InputHTMLAttributes } from "react";
+import { cn } from "../../lib/utils";
+
+type InputProps = InputHTMLAttributes<HTMLInputElement>;
+
+export function Input({ className, type, ...props }: InputProps) {
+  return (
+    <input
+      type={type}
+      className={cn(
+        "flex h-12 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+  }
+
+  return `import { cn } from "../../lib/utils";
+
+export function Input({ className, type, ...props }) {
+  return (
+    <input
+      type={type}
+      className={cn(
+        "flex h-12 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+}
+
+function labelComponentContent(language: Language): string {
+  if (language === "ts") {
+    return `import type { LabelHTMLAttributes } from "react";
+import { cn } from "../../lib/utils";
+
+type LabelProps = LabelHTMLAttributes<HTMLLabelElement>;
+
+export function Label({ className, ...props }: LabelProps) {
+  return (
+    <label
+      className={cn("text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)}
+      {...props}
+    />
+  );
+}
+`;
+  }
+
+  return `import { cn } from "../../lib/utils";
+
+export function Label({ className, ...props }) {
+  return (
+    <label
+      className={cn("text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)}
+      {...props}
+    />
+  );
+}
+`;
+}
+
+function textareaComponentContent(language: Language): string {
+  if (language === "ts") {
+    return `import type { TextareaHTMLAttributes } from "react";
+import { cn } from "../../lib/utils";
+
+type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>;
+
+export function Textarea({ className, ...props }: TextareaProps) {
+  return (
+    <textarea
+      className={cn(
+        "flex min-h-[130px] w-full rounded-3xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+  }
+
+  return `import { cn } from "../../lib/utils";
+
+export function Textarea({ className, ...props }) {
+  return (
+    <textarea
+      className={cn(
+        "flex min-h-[130px] w-full rounded-3xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+}
+
+function separatorComponentContent(language: Language): string {
+  if (language === "ts") {
+    return `import type { HTMLAttributes } from "react";
+import { cn } from "../../lib/utils";
+
+type SeparatorProps = HTMLAttributes<HTMLDivElement> & {
+  orientation?: "horizontal" | "vertical";
+};
+
+export function Separator({ className, orientation = "horizontal", ...props }: SeparatorProps) {
+  return (
+    <div
+      role="separator"
+      aria-orientation={orientation}
+      className={cn(
+        orientation === "vertical" ? "h-full w-px" : "h-px w-full",
+        "shrink-0 bg-border",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+`;
+  }
+
+  return `import { cn } from "../../lib/utils";
+
+export function Separator({ className, orientation = "horizontal", ...props }) {
+  return (
+    <div
+      role="separator"
+      aria-orientation={orientation}
+      className={cn(
+        orientation === "vertical" ? "h-full w-px" : "h-px w-full",
+        "shrink-0 bg-border",
+        className
+      )}
+      {...props}
+    />
   );
 }
 `;
@@ -441,6 +656,8 @@ function landingPageContent(
 ): string {
   const toggleImport = themeToggleImportPath(framework, routing);
   const localeImport = i18n ? `import { LanguageSwitcher, useI18n } from "${i18nImportPath(framework, routing)}";` : "";
+  const clientPage = framework === "next" && routing === "app" && i18n;
+  const clientDirective = clientPage ? `"use client";\n\n` : "";
   const buttonImport =
     uiLibrary === "shadcn"
       ? framework === "react"
@@ -457,6 +674,22 @@ function landingPageContent(
           ? `import { Card } from "../components/ui/card";`
           : `import { Card } from "../components/ui/card";`
       : "";
+  const badgeImport =
+    uiLibrary === "shadcn"
+      ? framework === "react"
+        ? `import { Badge } from "./components/ui/badge";`
+        : routing === "app"
+          ? `import { Badge } from "../components/ui/badge";`
+          : `import { Badge } from "../components/ui/badge";`
+      : "";
+  const separatorImport =
+    uiLibrary === "shadcn"
+      ? framework === "react"
+        ? `import { Separator } from "./components/ui/separator";`
+        : routing === "app"
+          ? `import { Separator } from "../components/ui/separator";`
+          : `import { Separator } from "../components/ui/separator";`
+      : "";
   const hasAuth = featureNotes.some((note) => note.toLowerCase().includes("auth"));
   const hasForms = featureNotes.some((note) => note.toLowerCase().includes("forms"));
   const hasToasts = featureNotes.some((note) => note.toLowerCase().includes("toast"));
@@ -472,7 +705,7 @@ function landingPageContent(
   const brandLabel = i18n ? '{t("brand")}' : "Quicky Setup";
   const systemFirstLabel = i18n ? '{t("systemFirst")}' : "System first";
   const launchLabel = i18n ? '{t("launchProject")}' : "Launch project";
-  const productionBaselineLabel = i18n ? '{t("productionBaseline")}' : "Production baseline";
+  const productionBaselineLabel = i18n ? '{t("productionBaseline")}' : "Production foundation";
   const productionBaselineCopy = i18n
     ? '{t("productionBaselineCopy")}'
     : "Theme toggle, motion, shadcn-ready wiring, env files, and first commit setup are included.";
@@ -509,6 +742,26 @@ function landingPageContent(
               >
                 ${launchLabel}
               </a>`;
+  const brandMarkup = uiLibrary === "shadcn"
+    ? `<Badge variant="outline" className="gap-3 bg-background/75 px-4 py-2 shadow-sm backdrop-blur">
+          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          ${brandLabel}
+        </Badge>`
+    : `<div className="inline-flex items-center gap-3 rounded-full border border-border bg-background/75 px-4 py-2 shadow-sm backdrop-blur">
+          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          <span className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+            ${brandLabel}
+          </span>
+        </div>`;
+  const systemBadge = uiLibrary === "shadcn"
+    ? `<Badge variant="outline" className="gap-2 border-transparent bg-transparent px-0 text-muted-foreground">
+                <span className="h-px w-12 bg-gradient-to-r from-primary to-transparent" />
+                ${systemFirstLabel}
+              </Badge>`
+    : `<div className="inline-flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
+                <span className="h-px w-12 bg-gradient-to-r from-primary to-transparent" />
+                ${systemFirstLabel}
+              </div>`;
 
   const infoCard = uiLibrary === "shadcn"
     ? `<Card className="grid gap-3 border-white/10 bg-background/80 shadow-xl">
@@ -519,6 +772,7 @@ function landingPageContent(
               <p className="text-sm font-medium text-muted-foreground">${productionBaselineLabel}</p>
               <p className="text-lg font-semibold">${productionBaselineCopy}</p>
             </div>`;
+  const separatorMarkup = uiLibrary === "shadcn" ? `<Separator className="opacity-70" />` : `<div className="h-px w-full bg-border" />`;
 
   const seoHead =
     seo && framework === "next" && routing === "pages"
@@ -527,7 +781,7 @@ function landingPageContent(
 `
       : "";
   const seoMetadata =
-    seo && framework === "next" && routing === "app"
+    seo && framework === "next" && routing === "app" && !clientPage
       ? `export const metadata = {
   title: "Quicky Setup",
   description: "Fastest setup with the first commit already prepared.",
@@ -587,7 +841,7 @@ function landingPageContent(
   const languageSwitcherMarkup = i18n ? `<LanguageSwitcher />` : "";
   const languageSwitcherImport = i18n ? `${localeImport}\n` : "";
   const i18nHookLine = i18n ? "  const { t } = useI18n();\n" : "";
-  return `${seoHead}${buttonImport}${buttonImport ? "\n" : ""}${cardImport}${cardImport ? "\n" : ""}${showcaseImport}${showcaseImport ? "\n" : ""}${languageSwitcherImport}import { ThemeToggle } from "${toggleImport}";
+  return `${clientDirective}${seoHead}${buttonImport}${buttonImport ? "\n" : ""}${cardImport}${cardImport ? "\n" : ""}${badgeImport}${badgeImport ? "\n" : ""}${separatorImport}${separatorImport ? "\n" : ""}${showcaseImport}${showcaseImport ? "\n" : ""}${languageSwitcherImport}import { ThemeToggle } from "${toggleImport}";
 ${seoMetadata}
 
 const metrics = ${JSON.stringify(metrics, null, 2)};
@@ -601,12 +855,7 @@ ${i18nHookLine}
     <main className="relative min-h-screen overflow-x-hidden bg-background text-foreground lg:h-screen lg:overflow-hidden">
       ${seoMarkup}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 pt-6 lg:px-8">
-        <div className="inline-flex items-center gap-3 rounded-full border border-border bg-background/75 px-4 py-2 shadow-sm backdrop-blur">
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          <span className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            ${brandLabel}
-          </span>
-        </div>
+        ${brandMarkup}
         <div className="flex items-center gap-3">
           ${i18n ? languageSwitcherMarkup : ""}
           <ThemeToggle />
@@ -616,10 +865,7 @@ ${i18nHookLine}
       <section className="relative z-10 mx-auto grid max-w-6xl gap-12 px-6 py-12 lg:h-[calc(100vh-88px)] lg:grid-cols-[1.05fr_0.95fr] lg:items-start lg:px-8 lg:py-8">
         <div className="space-y-8 lg:sticky lg:top-8 lg:self-start lg:pr-4">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.34em] text-muted-foreground">
-              <span className="h-px w-12 bg-gradient-to-r from-primary to-transparent" />
-              ${systemFirstLabel}
-            </div>
+            ${systemBadge}
             <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[0.96] tracking-[-0.05em] sm:text-6xl lg:text-[4.75rem]">
               ${heroTitle}
             </h1>
@@ -676,6 +922,7 @@ ${i18nHookLine}
             </p>
           </div>
 
+          ${separatorMarkup}
           <div className="grid gap-3 sm:grid-cols-3">
             {sectionNotes.map((section) => (
               <div key={section.label} className="rounded-[1.5rem] border border-border bg-background/80 p-4 shadow-sm backdrop-blur">
@@ -809,10 +1056,17 @@ function shadcnCardPath(projectPath: string, framework: Framework, language: Lan
     : path.join(projectPath, "src", "components", "ui", `card.${fileExt(language)}`);
 }
 
-function utilsPath(projectPath: string, framework: Framework): string {
+function shadcnComponentPath(projectPath: string, framework: Framework, language: Language, component: string): string {
   return framework === "next"
-    ? path.join(projectPath, "lib", "utils.ts")
-    : path.join(projectPath, "src", "lib", "utils.ts");
+    ? path.join(projectPath, "components", `ui/${component}.${fileExt(language)}`)
+    : path.join(projectPath, "src", "components", "ui", `${component}.${fileExt(language)}`);
+}
+
+function utilsPath(projectPath: string, framework: Framework, language: Language): string {
+  const fileName = `utils.${language}`;
+  return framework === "next"
+    ? path.join(projectPath, "lib", fileName)
+    : path.join(projectPath, "src", "lib", fileName);
 }
 
 function oppositeExt(language: Language): string {
@@ -865,12 +1119,19 @@ export async function scaffoldTheme(
 `
     );
   }
+  deleteIfExists(path.join(projectPath, "postcss.config.js"));
+  deleteIfExists(path.join(projectPath, "postcss.config.mjs"));
 
   if (uiLibrary === "shadcn") {
     writeIfChanged(path.join(projectPath, "components.json"), componentsJsonContent(framework, language));
-    writeIfChanged(utilsPath(projectPath, framework), cnUtilityContent());
+    writeIfChanged(utilsPath(projectPath, framework, language), cnUtilityContent(language));
     writeIfChanged(shadcnButtonPath(projectPath, framework, language), buttonComponentContent(language));
     writeIfChanged(shadcnCardPath(projectPath, framework, language), cardComponentContent(language));
+    writeIfChanged(shadcnComponentPath(projectPath, framework, language, "badge"), badgeComponentContent(language));
+    writeIfChanged(shadcnComponentPath(projectPath, framework, language, "input"), inputComponentContent(language));
+    writeIfChanged(shadcnComponentPath(projectPath, framework, language, "label"), labelComponentContent(language));
+    writeIfChanged(shadcnComponentPath(projectPath, framework, language, "textarea"), textareaComponentContent(language));
+    writeIfChanged(shadcnComponentPath(projectPath, framework, language, "separator"), separatorComponentContent(language));
   }
 
   writeIfChanged(themeTogglePath(projectPath, framework, language), themeToggleContent(language));

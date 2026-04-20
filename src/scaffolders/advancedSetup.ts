@@ -58,6 +58,14 @@ function oppositeExt(language: Language): string {
   return language === "ts" ? "js" : "ts";
 }
 
+function shadcnUiImports(answers: Answers, imports: Array<[exportName: string, fileName: string]>): string {
+  if (answers.uiLibrary !== "shadcn") {
+    return "";
+  }
+
+  return imports.map(([exportName, fileName]) => `import { ${exportName} } from "./ui/${fileName}";`).join("\n") + "\n";
+}
+
 function needsProviders(answers: Answers): boolean {
   return answers.reactQuery || answers.auth || answers.toasts || answers.i18n;
 }
@@ -282,7 +290,7 @@ const translations: Record<Locale, TranslationMap> = {
     heroDescription:
       "Quicky Setup composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.",
     launchProject: "Launch project",
-    productionBaseline: "Production baseline",
+    productionBaseline: "Production foundation",
     productionBaselineCopy:
       "Theme toggle, motion, shadcn-ready wiring, env files, and first commit setup are included.",
     gridNote: "Grid note",
@@ -445,7 +453,7 @@ const translations = {
     heroDescription:
       "Quicky Setup composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.",
     launchProject: "Launch project",
-    productionBaseline: "Production baseline",
+    productionBaseline: "Production foundation",
     productionBaselineCopy:
       "Theme toggle, motion, shadcn-ready wiring, env files, and first commit setup are included.",
     gridNote: "Grid note",
@@ -597,11 +605,77 @@ export function LanguageSwitcher() {
 
 function authPanelContent(answers: Answers): string {
   const ts = isTs(answers.language);
+  const shadcn = answers.uiLibrary === "shadcn";
+  const uiImports = shadcnUiImports(answers, [
+    ["Button", "button"],
+    ["Card", "card"],
+    ["Input", "input"],
+    ["Label", "label"],
+  ]);
+  const panelOpen = shadcn
+    ? `<Card className="grid gap-4 border-border/80 bg-background/80 shadow-xl">`
+    : `<section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">`;
+  const panelClose = shadcn ? `</Card>` : `</section>`;
+  const signOutButton = shadcn
+    ? `<Button type="button" onClick={logout}>Sign out</Button>`
+    : `<button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          >
+            Sign out
+          </button>`;
+  const nameField = shadcn
+    ? `<Label className="grid gap-2">
+            Name
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Avery"
+            />
+          </Label>`
+    : `<label className="grid gap-2 text-sm font-medium">
+            Name
+            <input
+              className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Avery"
+            />
+          </label>`;
+  const emailField = shadcn
+    ? `<Label className="grid gap-2">
+            Email
+            <Input
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="avery@example.com"
+              type="email"
+            />
+          </Label>`
+    : `<label className="grid gap-2 text-sm font-medium">
+            Email
+            <input
+              className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="avery@example.com"
+              type="email"
+            />
+          </label>`;
+  const signInButton = shadcn
+    ? `<Button type="submit">Sign in</Button>`
+    : `<button
+            type="submit"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          >
+            Sign in
+          </button>`;
   return `"use client";
 
 ${ts ? `import type { FormEvent } from "react";\n` : ""}
 import { useState } from "react";
-import { useAuth } from "../lib/auth";
+${uiImports}import { useAuth } from "../lib/auth";
 
 export function AuthPanel() {
   const { user, isAuthenticated, login, logout } = useAuth();
@@ -614,7 +688,7 @@ export function AuthPanel() {
   }
 
   return (
-    <section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">
+    ${panelOpen}
       <div className="space-y-1">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">Auth scaffold</p>
         <h2 className="text-2xl font-semibold">{isAuthenticated && user ? "Welcome back, " + user.name : "Ready for sign in"}</h2>
@@ -623,44 +697,16 @@ export function AuthPanel() {
       {isAuthenticated && user ? (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{user.email}</p>
-          <button
-            type="button"
-            onClick={logout}
-            className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-          >
-            Sign out
-          </button>
+          ${signOutButton}
         </div>
       ) : (
         <form className="grid gap-3" onSubmit={handleSubmit}>
-          <label className="grid gap-2 text-sm font-medium">
-            Name
-            <input
-              className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Avery"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Email
-            <input
-              className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="avery@example.com"
-              type="email"
-            />
-          </label>
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-          >
-            Sign in
-          </button>
+          ${nameField}
+          ${emailField}
+          ${signInButton}
         </form>
       )}
-    </section>
+    ${panelClose}
   );
 }
 `;
@@ -668,6 +714,7 @@ export function AuthPanel() {
 
 function advancedShowcaseContent(answers: Answers): string {
   const ts = isTs(answers.language);
+  const shadcn = answers.uiLibrary === "shadcn";
   const sections = [
     answers.auth ? "auth" : "",
     answers.forms ? "forms" : "",
@@ -675,17 +722,55 @@ function advancedShowcaseContent(answers: Answers): string {
   ].filter(Boolean);
 
   const initialKey = sections[0] ?? "auth";
-  const showcaseKeyType = ts ? `type ShowcaseKey = "auth" | "forms" | "toasts";\n\n` : "";
+  const showcaseKeyType = ts ? `type ShowcaseKey = ${sections.map((section) => `"${section}"`).join(" | ")};\n\n` : "";
   const tabsType = ts ? `const tabs: Array<{ key: ShowcaseKey; label: string }> = [` : `const tabs = [`;
   const activeState = ts
     ? `useState<ShowcaseKey>("${initialKey}" as ShowcaseKey)`
     : `useState("${initialKey}")`;
+  const imports = [
+    answers.auth ? `import { AuthPanel } from "./auth-panel";` : "",
+    answers.forms ? `import { ContactForm } from "./contact-form";` : "",
+    answers.toasts ? `import { ToastDemo } from "./toast-demo";` : "",
+  ].filter(Boolean).join("\n");
+  const uiImports = shadcnUiImports(answers, [
+    ["Button", "button"],
+    ["Card", "card"],
+  ]);
+  const panels = [
+    answers.auth ? `{active === "auth" ? <AuthPanel /> : null}` : "",
+    answers.forms ? `{active === "forms" ? <ContactForm /> : null}` : "",
+    answers.toasts ? `{active === "toasts" ? <ToastDemo /> : null}` : "",
+  ].filter(Boolean).join("\n        ");
+  const panelOpen = shadcn
+    ? `<Card className="grid gap-4 border-border/80 bg-background/80 shadow-xl">`
+    : `<section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">`;
+  const panelClose = shadcn ? `</Card>` : `</section>`;
+  const tabButton = shadcn
+    ? `<Button
+            key={tab.key}
+            type="button"
+            variant={active === tab.key ? "default" : "outline"}
+            onClick={() => setActive(tab.key)}
+          >
+            {tab.label}
+          </Button>`
+    : `<button
+            key={tab.key}
+            type="button"
+            onClick={() => setActive(tab.key)}
+            className={\`rounded-full border px-4 py-2 text-sm font-medium transition \${
+              active === tab.key
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-transparent hover:bg-muted"
+            }\`}
+          >
+            {tab.label}
+          </button>`;
   return `"use client";
 
 import { useState } from "react";
-import { AuthPanel } from "./auth-panel";
-import { ContactForm } from "./contact-form";
-import { ToastDemo } from "./toast-demo";
+${imports}
+${uiImports}
 
 ${showcaseKeyType}${tabsType}
   ${answers.auth ? `{ key: "auth", label: "Auth" },` : ""}
@@ -697,7 +782,7 @@ export function AdvancedShowcase() {
   const [active, setActive] = ${activeState};
 
   return (
-    <section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">
+    ${panelOpen}
       <div className="space-y-1">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">Advanced options</p>
         <h2 className="text-2xl font-semibold">Click to switch between the selected extras</h2>
@@ -705,27 +790,14 @@ export function AdvancedShowcase() {
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActive(tab.key)}
-            className={\`rounded-full border px-4 py-2 text-sm font-medium transition \${
-              active === tab.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-transparent hover:bg-muted"
-            }\`}
-          >
-            {tab.label}
-          </button>
+          ${tabButton}
         ))}
       </div>
 
       <div className="grid gap-4">
-        {active === "auth" ? <AuthPanel /> : null}
-        {active === "forms" ? <ContactForm /> : null}
-        {active === "toasts" ? <ToastDemo /> : null}
+        ${panels}
       </div>
-    </section>
+    ${panelClose}
   );
 }
 `;
@@ -831,14 +903,20 @@ ${metadata}export default function RootLayout({ children }${isTs(answers.languag
 `;
 }
 
+function vitestConfigFileName(language: Language): string {
+  return language === "ts" ? "vitest.config.ts" : "vitest.config.mjs";
+}
+
 function vitestConfigContent(language: Language): string {
-  const ts = isTs(language);
   const setupFile = `./test/setup.${language}`;
-  return `${ts ? `import { defineConfig } from "vitest/config";` : `import { defineConfig } from "vitest/config";`}
+  return `import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    clearMocks: true,
+    css: true,
     environment: "jsdom",
+    restoreMocks: true,
     setupFiles: "${setupFile}",
   },
 });
@@ -846,7 +924,15 @@ export default defineConfig({
 }
 
 function vitestSetupContent(): string {
-  return `import "@testing-library/jest-dom/vitest";
+  return `import { cleanup } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { afterEach } from "vitest";
+
+afterEach(() => {
+  cleanup();
+  document.documentElement.className = "";
+  window.localStorage.clear();
+});
 `;
 }
 
@@ -855,7 +941,8 @@ function themeToggleTestContent(answers: Answers): string {
     answers.framework === "react"
       ? "../src/components/theme-toggle"
       : "../components/theme-toggle";
-  return `import { render, screen } from "@testing-library/react";
+  return `import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { ThemeToggle } from "${importPath}";
 
 describe("ThemeToggle", () => {
@@ -863,16 +950,172 @@ describe("ThemeToggle", () => {
     render(<ThemeToggle />);
     expect(screen.getByRole("button", { name: /toggle dark and light theme/i })).toBeInTheDocument();
   });
+
+  it("toggles and persists dark mode", () => {
+    render(<ThemeToggle />);
+
+    fireEvent.click(screen.getByRole("button", { name: /toggle dark and light theme/i }));
+
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(window.localStorage.getItem("theme")).toBe("dark");
+  });
+});
+`;
+}
+
+function authPanelTestContent(answers: Answers): string {
+  const authImportPath =
+    answers.framework === "react"
+      ? "../src/lib/auth"
+      : "../lib/auth";
+  const panelImportPath =
+    answers.framework === "react"
+      ? "../src/components/auth-panel"
+      : "../components/auth-panel";
+
+  return `import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { AuthProvider } from "${authImportPath}";
+import { AuthPanel } from "${panelImportPath}";
+
+function renderAuthPanel() {
+  render(
+    <AuthProvider>
+      <AuthPanel />
+    </AuthProvider>
+  );
+}
+
+describe("AuthPanel", () => {
+  it("signs a user in and out through the generated auth provider", () => {
+    renderAuthPanel();
+
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: "Mira" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "mira@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(screen.getByText(/welcome back, Mira/i)).toBeInTheDocument();
+    expect(window.localStorage.getItem("quicky-setup-user")).toContain("mira@example.com");
+
+    fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
+
+    expect(screen.getByText(/ready for sign in/i)).toBeInTheDocument();
+  });
+});
+`;
+}
+
+function contactFormTestContent(answers: Answers): string {
+  const importPath =
+    answers.framework === "react"
+      ? "../src/components/contact-form"
+      : "../components/contact-form";
+
+  return `import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { ContactForm } from "${importPath}";
+
+describe("ContactForm", () => {
+  it("shows validation errors before accepting a message", async () => {
+    render(<ContactForm />);
+
+    fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    expect(await screen.findByText(/name is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();
+    expect(screen.getByText(/message should be at least 10 characters/i)).toBeInTheDocument();
+  });
 });
 `;
 }
 
 function contactFormContent(answers: Answers): string {
   const ts = isTs(answers.language);
+  const shadcn = answers.uiLibrary === "shadcn";
+  const uiImports = shadcnUiImports(answers, [
+    ["Button", "button"],
+    ["Card", "card"],
+    ["Input", "input"],
+    ["Label", "label"],
+    ["Textarea", "textarea"],
+  ]);
   const toastImport = answers.toasts ? `import { toast } from "sonner";` : "";
   const toastBody = answers.toasts
-    ? `    toast.success("Your message is ready for production flow.");`
+    ? `    toast.success(\`Thanks \${values.name}, your message is ready for production flow.\`);`
     : `    console.log("Contact form submitted:", values);`;
+  const panelOpen = shadcn
+    ? `<Card className="grid gap-4 border-border/80 bg-background/80 shadow-xl">`
+    : `<section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">`;
+  const panelClose = shadcn ? `</Card>` : `</section>`;
+  const nameField = shadcn
+    ? `<Label className="grid gap-2">
+          Name
+          <Input {...form.register("name")} placeholder="Avery" />
+          {form.formState.errors.name ? (
+            <span className="text-xs text-red-500">{form.formState.errors.name.message}</span>
+          ) : null}
+        </Label>`
+    : `<label className="grid gap-2 text-sm font-medium">
+          Name
+          <input
+            className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
+            {...form.register("name")}
+            placeholder="Avery"
+          />
+          {form.formState.errors.name ? (
+            <span className="text-xs text-red-500">{form.formState.errors.name.message}</span>
+          ) : null}
+        </label>`;
+  const emailField = shadcn
+    ? `<Label className="grid gap-2">
+          Email
+          <Input {...form.register("email")} placeholder="avery@example.com" type="email" />
+          {form.formState.errors.email ? (
+            <span className="text-xs text-red-500">{form.formState.errors.email.message}</span>
+          ) : null}
+        </Label>`
+    : `<label className="grid gap-2 text-sm font-medium">
+          Email
+          <input
+            className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
+            {...form.register("email")}
+            placeholder="avery@example.com"
+            type="email"
+          />
+          {form.formState.errors.email ? (
+            <span className="text-xs text-red-500">{form.formState.errors.email.message}</span>
+          ) : null}
+        </label>`;
+  const messageField = shadcn
+    ? `<Label className="grid gap-2">
+          Message
+          <Textarea {...form.register("message")} placeholder="Tell us what you want to build..." />
+          {form.formState.errors.message ? (
+            <span className="text-xs text-red-500">{form.formState.errors.message.message}</span>
+          ) : null}
+        </Label>`
+    : `<label className="grid gap-2 text-sm font-medium">
+          Message
+          <textarea
+            className="min-h-[130px] rounded-3xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
+            {...form.register("message")}
+            placeholder="Tell us what you want to build..."
+          />
+          {form.formState.errors.message ? (
+            <span className="text-xs text-red-500">{form.formState.errors.message.message}</span>
+          ) : null}
+        </label>`;
+  const submitButton = shadcn
+    ? `<Button type="submit" disabled={form.formState.isSubmitting}>
+          Send message
+        </Button>`
+    : `<button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={form.formState.isSubmitting}
+        >
+          Send message
+        </button>`;
 
   return `"use client";
 
@@ -880,7 +1123,7 @@ ${ts ? `import type { SubmitHandler } from "react-hook-form";\n` : ""}
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-${toastImport}
+${uiImports}${toastImport}
 
 const contactFormSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -906,94 +1149,78 @@ ${toastBody}
   };
 
   return (
-    <section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">
+    ${panelOpen}
       <div className="space-y-1">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">Forms stack</p>
         <h2 className="text-2xl font-semibold">Zod + React Hook Form</h2>
       </div>
 
       <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <label className="grid gap-2 text-sm font-medium">
-          Name
-          <input
-            className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
-            {...form.register("name")}
-            placeholder="Avery"
-          />
-          {form.formState.errors.name ? (
-            <span className="text-xs text-red-500">{form.formState.errors.name.message}</span>
-          ) : null}
-        </label>
+        ${nameField}
 
-        <label className="grid gap-2 text-sm font-medium">
-          Email
-          <input
-            className="rounded-2xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
-            {...form.register("email")}
-            placeholder="avery@example.com"
-            type="email"
-          />
-          {form.formState.errors.email ? (
-            <span className="text-xs text-red-500">{form.formState.errors.email.message}</span>
-          ) : null}
-        </label>
+        ${emailField}
 
-        <label className="grid gap-2 text-sm font-medium">
-          Message
-          <textarea
-            className="min-h-[130px] rounded-3xl border border-border bg-background px-4 py-3 outline-none ring-0 focus:border-primary"
-            {...form.register("message")}
-            placeholder="Tell us what you want to build..."
-          />
-          {form.formState.errors.message ? (
-            <span className="text-xs text-red-500">{form.formState.errors.message.message}</span>
-          ) : null}
-        </label>
+        ${messageField}
 
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={form.formState.isSubmitting}
-        >
-          Send message
-        </button>
+        ${submitButton}
       </form>
-    </section>
+    ${panelClose}
   );
 }
 `;
 }
 
-function toastDemoContent(): string {
+function toastDemoContent(answers: Answers): string {
+  const shadcn = answers.uiLibrary === "shadcn";
+  const uiImports = shadcnUiImports(answers, [
+    ["Button", "button"],
+    ["Card", "card"],
+  ]);
+  const panelOpen = shadcn
+    ? `<Card className="grid gap-4 border-border/80 bg-background/80 shadow-xl">`
+    : `<section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">`;
+  const panelClose = shadcn ? `</Card>` : `</section>`;
+  const successButton = shadcn
+    ? `<Button type="button" onClick={() => toast.success("Everything is working.")}>
+          Success toast
+        </Button>`
+    : `<button
+          type="button"
+          onClick={() => toast.success("Everything is working.")}
+          className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+        >
+          Success toast
+        </button>`;
+  const errorButton = shadcn
+    ? `<Button type="button" variant="outline" onClick={() => toast.error("Something needs attention.")}>
+          Error toast
+        </Button>`
+    : `<button
+          type="button"
+          onClick={() => toast.error("Something needs attention.")}
+          className="inline-flex items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+        >
+          Error toast
+        </button>`;
+
   return `"use client";
 
 import { toast } from "sonner";
+${uiImports}
 
 export function ToastDemo() {
   return (
-    <section className="grid gap-4 rounded-3xl border border-border bg-background/80 p-6 shadow-xl backdrop-blur">
+    ${panelOpen}
       <div className="space-y-1">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">Toast system</p>
         <h2 className="text-2xl font-semibold">Sonner is wired and ready</h2>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={() => toast.success("Everything is working.")}
-          className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-        >
-          Success toast
-        </button>
-        <button
-          type="button"
-          onClick={() => toast.error("Something needs attention.")}
-          className="inline-flex items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted"
-        >
-          Error toast
-        </button>
+        ${successButton}
+        ${errorButton}
       </div>
-    </section>
+    ${panelClose}
   );
 }
 `;
@@ -1023,7 +1250,7 @@ function renderPageFeatureNotes(answers: Answers): string[] {
   }
 
   if (answers.tests) {
-    notes.push("Vitest test baseline");
+    notes.push("Vitest test setup");
   }
 
   return notes;
@@ -1101,7 +1328,7 @@ export default function App({ Component, pageProps }${isTs(answers.language) ? `
     const toastExt = ext(answers.language, "tsx", "jsx");
     writeIfChanged(
       componentPath(projectPath, answers, `toast-demo.${toastExt}`),
-      toastDemoContent()
+      toastDemoContent(answers)
     );
     deleteIfExists(componentPath(projectPath, answers, `toast-demo.${oppositeExt(answers.language)}`));
   }
@@ -1113,9 +1340,15 @@ export default function App({ Component, pageProps }${isTs(answers.language) ? `
   }
 
   if (answers.tests) {
-    writeIfChanged(rootPath(projectPath, `vitest.config.${answers.language}`), vitestConfigContent(answers.language));
+    writeIfChanged(rootPath(projectPath, vitestConfigFileName(answers.language)), vitestConfigContent(answers.language));
     writeIfChanged(rootPath(projectPath, path.join("test", `setup.${answers.language}`)), vitestSetupContent());
     writeIfChanged(rootPath(projectPath, path.join("test", `theme-toggle.${answers.language === "ts" ? "test.tsx" : "test.jsx"}`)), themeToggleTestContent(answers));
+    if (answers.auth) {
+      writeIfChanged(rootPath(projectPath, path.join("test", `auth-panel.${answers.language === "ts" ? "test.tsx" : "test.jsx"}`)), authPanelTestContent(answers));
+    }
+    if (answers.forms) {
+      writeIfChanged(rootPath(projectPath, path.join("test", `contact-form.${answers.language === "ts" ? "test.tsx" : "test.jsx"}`)), contactFormTestContent(answers));
+    }
   }
 
   const featureNotes = renderPageFeatureNotes(answers);

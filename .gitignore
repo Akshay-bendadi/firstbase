@@ -20,6 +20,19 @@ yarn-error.log*
 
 # Environment variables
 .env*.local
+!.env.example
+.npmrc
+*.key
+*.p8
+*.p12
+*.crt
+*.cer
+serviceAccount.json
+service-account.json
+*.serviceAccount.json
+*.service-account.json
+secrets.json
+secrets.*.json
 
 # Editor directories and files
 .idea/
@@ -60,6 +73,8 @@ logs
 
 # dotenv environment variables file
 .env
+.env.*
+!.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -84,6 +99,7 @@ yarn-error.log*
 
 # Local env files
 .env*.local
+!.env.example
 
 # Vercel
 .vercel
