@@ -228,17 +228,7 @@ jobs:
             exit 0
           fi
 
-          socket_org="\${SOCKET_ORG:-\${GITHUB_REPOSITORY_OWNER}}"
-          socket_org="$(printf '%s' "$socket_org" | tr '[:upper:]' '[:lower:]')"
-
-          if [ -z "$socket_org" ]; then
-            echo "::notice title=Socket skipped::SOCKET_ORG could not be resolved. Set the SOCKET_ORG repository variable to your Socket organization slug."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           echo "::add-mask::$SOCKET_SECURITY_API_KEY"
-          echo "org=$socket_org" >> "$GITHUB_OUTPUT"
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
@@ -262,7 +252,12 @@ jobs:
         run: |
           repo="\${GITHUB_REPOSITORY#*/}"
           branch="\${GITHUB_HEAD_REF:-\${GITHUB_REF_NAME}}"
-          socket scan create --org "\${{ steps.socket-config.outputs.org }}" --repo "$repo" --branch "$branch" --report --no-interactive .
+          org_args=()
+          if [ -n "$SOCKET_ORG" ]; then
+            org_args=(--org "$SOCKET_ORG")
+          fi
+
+          socket scan create "\${org_args[@]}" --repo "$repo" --branch "$branch" --report --no-interactive .
 `;
 }
 

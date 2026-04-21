@@ -114,7 +114,7 @@ Next.js 16 uses Turbopack by default for `next dev` and `next build`, so no `--t
 
 The default Husky hook only runs local scripts. It does not make network requests and does not interpolate user input.
 
-The generated `socket.yml` workflow always runs a preflight job and skips cleanly when the Socket token is not configured. It scans with the lowercased GitHub repository owner as the default Socket organization slug. Set the repository variable `SOCKET_ORG` only when the Socket organization slug differs from the GitHub owner. The Socket CLI install is pinned to `socket@1.1.85`.
+The generated `socket.yml` workflow always runs a preflight job and skips cleanly when the Socket token is not configured. It lets the Socket CLI use the token's default organization. Set the repository variable `SOCKET_ORG` only when you need to force a specific Socket organization slug. The Socket CLI install is pinned to `socket@1.1.85`.
 
 ## shadcn/ui-Compatible Files
 
@@ -151,7 +151,7 @@ The generated `npm run check` includes tests only when the user selects the adva
 - The Axios client blocks cross-origin absolute requests from the configured API instance and removes authorization headers before throwing.
 - Next.js projects receive `next.config.*` with baseline security headers and a Content Security Policy.
 - GitHub Dependency Review runs in `.github/workflows/dependency-review.yml` on pull requests when GitHub dependency graph support is available.
-- CI includes an optional Socket policy scan for malicious package behavior and install-script risk when `SOCKET_SECURITY_API_KEY` is set in GitHub. `SOCKET_ORG` can override the default lowercased GitHub repository owner slug.
+- CI includes an optional Socket policy scan for malicious package behavior and install-script risk when `SOCKET_SECURITY_API_KEY` is set in GitHub. `SOCKET_ORG` can override the Socket CLI default organization when needed.
 
 ## Generated Project Documentation
 
@@ -169,4 +169,4 @@ Every generated app receives `docs/production-setup.md`. That file is tailored t
 - Release tarballs and SHA-256 checksums are attached to GitHub releases.
 - `SECURITY.md` defines vulnerability reporting expectations.
 - `.github/workflows/dependency-review.yml` runs GitHub Dependency Review only on pull requests and passes with a plain log message when the repository does not support it yet.
-- `.github/workflows/socket.yml` runs a pinned Socket CLI policy scan when `SOCKET_SECURITY_API_KEY` is configured. `SOCKET_ORG` can override the default lowercased GitHub repository owner slug.
+- `.github/workflows/socket.yml` runs a pinned Socket CLI policy scan when `SOCKET_SECURITY_API_KEY` is configured. `SOCKET_ORG` can override the Socket CLI default organization when needed.
