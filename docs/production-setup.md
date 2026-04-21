@@ -106,7 +106,7 @@ When Husky is selected, the generated app gets:
 
 The generated GitHub Actions CI workflow uses Node `20.19.0`, installs with `npm ci`, runs `npm audit --audit-level=high`, and runs `npm run check`, so local hooks and CI use the same gate.
 
-The generated Dependency Review workflow runs only on pull requests, so push CI does not include a skipped dependency-review step. It preflights GitHub dependency graph support and skips with a notice until the repository can run Dependency Review.
+The generated Dependency Review workflow runs only on pull requests, so push CI does not include a skipped dependency-review step. It preflights GitHub dependency graph support and passes with a notice until the repository can run Dependency Review.
 
 Generated apps also include `.nvmrc` and `.node-version` so local Node managers can match CI.
 
@@ -168,5 +168,5 @@ Every generated app receives `docs/production-setup.md`. That file is tailored t
 - The release workflow publishes from the protected `npm-publish` GitHub environment with npm provenance.
 - Release tarballs and SHA-256 checksums are attached to GitHub releases.
 - `SECURITY.md` defines vulnerability reporting expectations.
-- `.github/workflows/dependency-review.yml` runs GitHub Dependency Review only on pull requests and skips cleanly when the repository does not support it yet.
+- `.github/workflows/dependency-review.yml` runs GitHub Dependency Review only on pull requests and passes with a notice when the repository does not support it yet.
 - `.github/workflows/socket.yml` runs a pinned Socket CLI policy scan when `SOCKET_SECURITY_API_KEY` and `SOCKET_ORG` are configured.

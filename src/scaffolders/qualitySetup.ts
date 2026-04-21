@@ -145,8 +145,7 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Check dependency review support
-        id: dependency-review-support
+      - name: Dependency review
         shell: bash
         env:
           GH_TOKEN: \${{ github.token }}
@@ -163,27 +162,37 @@ jobs:
             "$url")"
 
           if [ "$http_status" = "200" ]; then
-            echo "supported=true" >> "$GITHUB_OUTPUT"
+            echo "Dependency review API is available."
+          elif [ "$http_status" = "403" ] || [ "$http_status" = "404" ]; then
+            echo "::notice title=Dependency Review unavailable::Dependency review is not supported for this repository or dependency graph is not enabled. Enable dependency graph in repository security settings to enforce this check."
+            exit 0
+          else
+            echo "::error title=Dependency Review preflight failed::GitHub API returned HTTP $http_status while checking dependency review support."
+            cat response.json
+            exit 1
+          fi
+
+          vulnerability_count="$(jq '[.[] | select((.change_type == "added" or .change_type == "changed") and ((.vulnerabilities // []) | length > 0)) | .vulnerabilities[]] | length' response.json)"
+
+          if [ "$vulnerability_count" -eq 0 ]; then
+            echo "No vulnerable dependency changes found."
             exit 0
           fi
 
-          if [ "$http_status" = "403" ] || [ "$http_status" = "404" ]; then
-            echo "::notice title=Dependency Review skipped::Dependency review is not supported for this repository or dependency graph is not enabled. Enable dependency graph in repository security settings to enforce this check."
-            echo "supported=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          {
+            echo "### Dependency Review"
+            echo
+            echo "Found \${vulnerability_count} vulnerable changed dependency finding(s)."
+            echo
+            jq -r '.[] | select((.change_type == "added" or .change_type == "changed") and ((.vulnerabilities // []) | length > 0)) | . as $dependency | $dependency.vulnerabilities[] | "- \\($dependency.name)@\\($dependency.version // "unknown") in \\($dependency.manifest): \\(.severity) \\(.advisory_ghsa_id) - \\(.advisory_summary)"' response.json
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          echo "::error title=Dependency Review preflight failed::GitHub API returned HTTP $http_status while checking dependency review support."
-          cat response.json
+          jq -r '.[] | select((.change_type == "added" or .change_type == "changed") and ((.vulnerabilities // []) | length > 0)) | . as $dependency | $dependency.vulnerabilities[] | "\\($dependency.name)@\\($dependency.version // "unknown") in \\($dependency.manifest): \\(.severity) \\(.advisory_ghsa_id) - \\(.advisory_summary)"' response.json |
+            while IFS= read -r finding; do
+              echo "::error title=Vulnerable dependency::$finding"
+            done
+
           exit 1
-
-      - name: Checkout
-        if: steps.dependency-review-support.outputs.supported == 'true'
-        uses: actions/checkout@v4
-
-      - name: Dependency review
-        if: steps.dependency-review-support.outputs.supported == 'true'
-        uses: actions/dependency-review-action@v4
 `;
 }
 
