@@ -105,6 +105,9 @@ on:
     branches: ["main", "master"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -118,10 +121,6 @@ jobs:
           node-version: 20.19.0
           cache: npm
 
-      - name: Dependency review
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v4
-
       - name: Install dependencies
         run: npm ci
 
@@ -130,6 +129,27 @@ jobs:
 
       - name: Quality gate
         run: npm run check
+`;
+}
+
+function dependencyReviewWorkflowContent(): string {
+  return `name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
 `;
 }
 
@@ -293,6 +313,7 @@ export function scaffoldQualityFiles(
   writeIfChanged(path.join(projectPath, ".prettierrc.cjs"), prettierConfigContent());
   writeIfChanged(path.join(projectPath, ".prettierignore"), prettierIgnoreContent());
   writeIfChanged(path.join(projectPath, ".github", "workflows", "ci.yml"), ciWorkflowContent(framework, includeTests));
+  writeIfChanged(path.join(projectPath, ".github", "workflows", "dependency-review.yml"), dependencyReviewWorkflowContent());
   writeIfChanged(path.join(projectPath, ".github", "workflows", "socket.yml"), socketWorkflowContent());
   if (framework === "next") {
     writeIfChanged(path.join(projectPath, "eslint.config.mjs"), eslintConfigContent(language));

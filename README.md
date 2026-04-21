@@ -15,6 +15,7 @@ CLI scaffold for starting a React or Next.js app with a production-oriented Tail
 - Generates a production `.gitignore`
 - Adds Prettier with import sorting
 - Adds a GitHub Actions CI workflow with dependency audit
+- Adds a PR-only GitHub Dependency Review workflow
 - Adds an optional Socket Security workflow when `SOCKET_SECURITY_API_KEY` and `SOCKET_ORG` are configured in GitHub
 - Generates a production `.gitignore` with build, cache, log, editor, and env entries
 - Offers a fast default setup or an advanced mode with React Query, SEO metadata, tests, and language support
@@ -149,6 +150,7 @@ The generated app also receives:
 - Next.js 16 uses Turbopack by default, and the generator uses `eslint .` instead of the removed `next lint` command.
 - Direct CLI package dependencies are pinned exactly, and generated app install commands use exact versions with `--save-exact`.
 - Generated CI runs `npm audit --audit-level=high`; Husky does not run audit so commits do not trigger network calls.
+- Generated GitHub Dependency Review runs in its own pull-request workflow so push CI does not show a skipped dependency-review step.
 - Generated Socket Security workflow always runs a preflight job, skips cleanly when Socket is not configured, and scans only when the GitHub secret `SOCKET_SECURITY_API_KEY` and repository variable `SOCKET_ORG` are available.
 - npm publishing is guarded by CI-only release workflow checks, npm provenance, dry-run package inspection, and release checksums.
 - The CLI does not collect telemetry.

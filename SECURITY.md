@@ -23,6 +23,7 @@ If you do not have a private contact for the maintainer yet, open a minimal publ
 - Release publishing uses npm provenance.
 - Maintainers must enable npm account 2FA before receiving publish access.
 - CI runs `npm audit --audit-level=high`.
+- GitHub Dependency Review runs in its own pull-request workflow.
 - CI can run Socket Security policy scans when `SOCKET_SECURITY_API_KEY` is configured.
 - Local publish attempts are blocked by `scripts/guard-publish-ci.mjs`.
 - Generated projects pin install versions and use `npm run check` for Husky and CI.
