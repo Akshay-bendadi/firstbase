@@ -1,9 +1,9 @@
 {
-  "name": "quicky-setup",
+  "name": "firstbase",
   "version": "0.0.1",
   "description": "A small CLI for scaffolding React or Next.js projects with a theme-first baseline.",
   "bin": {
-    "quicky-setup": "dist/bin/quicky-setup.js"
+    "firstbase": "dist/bin/firstbase.js"
   },
   "type": "module",
   "keywords": [
@@ -20,11 +20,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Akshay-bendadi/quicky-setup.git"
+    "url": "git+https://github.com/Akshay-bendadi/firstbase.git"
   },
-  "homepage": "https://github.com/Akshay-bendadi/quicky-setup#readme",
+  "homepage": "https://github.com/Akshay-bendadi/firstbase#readme",
   "bugs": {
-    "url": "https://github.com/Akshay-bendadi/quicky-setup/issues"
+    "url": "https://github.com/Akshay-bendadi/firstbase/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -64,7 +64,7 @@
     "build": "tsc",
     "postbuild": "node ./scripts/generate-template-manifest.mjs",
     "build:watch": "tsc --watch",
-    "start": "node ./dist/bin/quicky-setup.js",
+    "start": "node ./dist/bin/firstbase.js",
     "dev": "npm run clean && npm run build && npm start",
     "typecheck": "tsc --noEmit",
     "template:verify": "node ./scripts/verify-template-manifest.mjs",

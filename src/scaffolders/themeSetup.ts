@@ -701,8 +701,8 @@ function landingPageContent(
   const heroTitle = i18n ? '{t("heroTitle")}' : "A disciplined frontend foundation.";
   const heroDescription = i18n
     ? '{t("heroDescription")}'
-    : "Quicky Setup composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.";
-  const brandLabel = i18n ? '{t("brand")}' : "Quicky Setup";
+    : "Firstbase composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.";
+  const brandLabel = i18n ? '{t("brand")}' : "Firstbase";
   const systemFirstLabel = i18n ? '{t("systemFirst")}' : "System first";
   const launchLabel = i18n ? '{t("launchProject")}' : "Launch project";
   const productionBaselineLabel = i18n ? '{t("productionBaseline")}' : "Production foundation";
@@ -783,7 +783,7 @@ function landingPageContent(
   const seoMetadata =
     seo && framework === "next" && routing === "app" && !clientPage
       ? `export const metadata = {
-  title: "Quicky Setup",
+  title: "Firstbase",
   description: "Fastest setup with the first commit already prepared.",
 };
 
@@ -792,7 +792,7 @@ function landingPageContent(
   const seoMarkup =
     seo && framework === "next" && routing === "pages"
       ? `      <Head>
-        <title>Quicky Setup</title>
+        <title>Firstbase</title>
         <meta name="description" content="Fastest setup with the first commit already prepared." />
       </Head>
 

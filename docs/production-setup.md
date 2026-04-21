@@ -1,4 +1,4 @@
-# Quicky Setup Production Scaffold
+# Firstbase Production Scaffold
 
 This document records what the CLI generates for production-oriented React and Next.js starters.
 

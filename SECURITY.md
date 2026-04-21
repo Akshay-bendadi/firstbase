@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Security fixes are released for the latest published version of `quicky-setup`.
+Security fixes are released for the latest published version of `firstbase`.
 
 ## Reporting A Vulnerability
 

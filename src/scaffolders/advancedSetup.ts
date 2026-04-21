@@ -104,7 +104,7 @@ type AuthContextValue = {
   logout: () => void;
 };
 
-const AUTH_STORAGE_KEY = "quicky-setup-user";
+const AUTH_STORAGE_KEY = "firstbase-user";
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function readStoredUser(): AuthUser | null {
@@ -170,7 +170,7 @@ export function useAuth() {
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-const AUTH_STORAGE_KEY = "quicky-setup-user";
+const AUTH_STORAGE_KEY = "firstbase-user";
 const AuthContext = createContext(undefined);
 
 function readStoredUser() {
@@ -281,14 +281,14 @@ type I18nContextValue = {
   t: (key: CopyKey) => string;
 };
 
-const STORAGE_KEY = "quicky-setup-locale";
+const STORAGE_KEY = "firstbase-locale";
 const translations: Record<Locale, TranslationMap> = {
   en: {
-    brand: "Quicky Setup",
+    brand: "Firstbase",
     systemFirst: "System first",
     heroTitle: "A disciplined frontend foundation.",
     heroDescription:
-      "Quicky Setup composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.",
+      "Firstbase composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.",
     launchProject: "Launch project",
     productionBaseline: "Production foundation",
     productionBaselineCopy:
@@ -324,11 +324,11 @@ const translations: Record<Locale, TranslationMap> = {
     themeMode: "Theme mode",
   },
   es: {
-    brand: "Quicky Setup",
+    brand: "Firstbase",
     systemFirst: "Sistema primero",
     heroTitle: "Una base frontend disciplinada.",
     heroDescription:
-      "Quicky Setup combina tokens de Tailwind, estructura visual, wiring opcional de shadcn, archivos de entorno y hooks de commit en un punto de partida tranquilo.",
+      "Firstbase combina tokens de Tailwind, estructura visual, wiring opcional de shadcn, archivos de entorno y hooks de commit en un punto de partida tranquilo.",
     launchProject: "Iniciar proyecto",
     productionBaseline: "Base de producción",
     productionBaselineCopy:
@@ -444,14 +444,14 @@ export function LanguageSwitcher() {
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "quicky-setup-locale";
+const STORAGE_KEY = "firstbase-locale";
 const translations = {
   en: {
-    brand: "Quicky Setup",
+    brand: "Firstbase",
     systemFirst: "System first",
     heroTitle: "A disciplined frontend foundation.",
     heroDescription:
-      "Quicky Setup composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.",
+      "Firstbase composes Tailwind tokens, layout structure, optional shadcn wiring, env files, and commit hooks into one calm starting point.",
     launchProject: "Launch project",
     productionBaseline: "Production foundation",
     productionBaselineCopy:
@@ -487,11 +487,11 @@ const translations = {
     themeMode: "Theme mode",
   },
   es: {
-    brand: "Quicky Setup",
+    brand: "Firstbase",
     systemFirst: "Sistema primero",
     heroTitle: "Una base frontend disciplinada.",
     heroDescription:
-      "Quicky Setup combina tokens de Tailwind, estructura visual, wiring opcional de shadcn, archivos de entorno y hooks de commit en un punto de partida tranquilo.",
+      "Firstbase combina tokens de Tailwind, estructura visual, wiring opcional de shadcn, archivos de entorno y hooks de commit en un punto de partida tranquilo.",
     launchProject: "Iniciar proyecto",
     productionBaseline: "Base de producción",
     productionBaselineCopy:
@@ -881,7 +881,7 @@ ReactDOM.createRoot(${rootTarget}).render(
 function nextProvidersLayoutContent(answers: Answers): string {
   const metadata = answers.seo
     ? `export const metadata = {
-  title: "Quicky Setup",
+  title: "Firstbase",
   description: "Fastest setup with the first commit already prepared.",
 };
 
@@ -995,7 +995,7 @@ describe("AuthPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
     expect(screen.getByText(/welcome back, Mira/i)).toBeInTheDocument();
-    expect(window.localStorage.getItem("quicky-setup-user")).toContain("mira@example.com");
+    expect(window.localStorage.getItem("firstbase-user")).toContain("mira@example.com");
 
     fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
 
