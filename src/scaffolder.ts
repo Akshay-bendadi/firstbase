@@ -554,7 +554,7 @@ ${answers.tests
 
 - Dependencies are installed with exact versions and \`--save-exact\`.
 - CI runs \`npm audit --audit-level=high\` before the quality gate.
-- GitHub Dependency Review runs in its own pull-request workflow and passes with a notice when the repository does not support it yet.
+- GitHub Dependency Review runs in its own pull-request workflow and passes with a plain log message when the repository does not support it yet.
 - CI includes an optional pinned Socket Security scan when \`SOCKET_SECURITY_API_KEY\` and \`SOCKET_ORG\` are configured in GitHub.
 - Secret-bearing files such as \`.env\`, \`.npmrc\`, \`*.pem\`, \`*.key\`, and service account JSON files are ignored by git.
 - \`.env.example\` uses fake placeholder values and must not contain real keys.

@@ -29,7 +29,7 @@ jobs:
           if [ "$http_status" = "200" ]; then
             echo "Dependency review API is available."
           elif [ "$http_status" = "403" ] || [ "$http_status" = "404" ]; then
-            echo "::notice title=Dependency Review unavailable::Dependency review is not supported for this repository or dependency graph is not enabled. Enable dependency graph in repository security settings to enforce this check."
+            echo "Dependency review unavailable: dependency review is not supported for this repository or dependency graph is not enabled."
             exit 0
           else
             echo "::error title=Dependency Review preflight failed::GitHub API returned HTTP $http_status while checking dependency review support."
