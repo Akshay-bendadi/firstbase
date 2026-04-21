@@ -10,8 +10,42 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
+      - name: Check dependency review support
+        id: dependency-review-support
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          basehead="${BASE_SHA}...${HEAD_SHA}"
+          url="https://api.github.com/repos/${REPOSITORY}/dependency-graph/compare/${basehead}"
+          http_status="$(curl --silent --show-error --location --output response.json --write-out "%{http_code}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$url")"
+
+          if [ "$http_status" = "200" ]; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$http_status" = "403" ] || [ "$http_status" = "404" ]; then
+            echo "::notice title=Dependency Review skipped::Dependency review is not supported for this repository or dependency graph is not enabled. Enable dependency graph in repository security settings to enforce this check."
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "::error title=Dependency Review preflight failed::GitHub API returned HTTP $http_status while checking dependency review support."
+          cat response.json
+          exit 1
+
       - name: Checkout
+        if: steps.dependency-review-support.outputs.supported == 'true'
         uses: actions/checkout@v4
 
       - name: Dependency review
+        if: steps.dependency-review-support.outputs.supported == 'true'
         uses: actions/dependency-review-action@v4
