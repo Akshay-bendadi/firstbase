@@ -20,7 +20,7 @@ export async function playIntroAnimation(): Promise<void> {
 
   console.log("\n" + cyan("┌" + "─".repeat(Math.max(width - 2, 20)) + "┐"));
   await typeLine(
-    cyan("│ ") + pink("Quicky Setup".padEnd(Math.max(width - 16, 20))) + cyan(" │"),
+    cyan("│ ") + pink("Firstbase".padEnd(Math.max(width - 16, 20))) + cyan(" │"),
     8
   );
   await typeLine(

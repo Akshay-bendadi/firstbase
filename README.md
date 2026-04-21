@@ -1,4 +1,4 @@
-# Quicky Setup
+# Firstbase
 
 CLI scaffold for starting a React or Next.js app with a production-oriented Tailwind foundation.
 
@@ -30,7 +30,7 @@ CLI scaffold for starting a React or Next.js app with a production-oriented Tail
 ## Install
 
 ```bash
-npx quicky-setup@latest
+npx firstbase@latest
 ```
 
 If you are developing this package locally:
@@ -46,7 +46,7 @@ npm run start
 Run the CLI and answer the prompts:
 
 ```bash
-npx quicky-setup
+npx firstbase
 ```
 
 The prompts let you choose:
@@ -165,4 +165,4 @@ npm install
 npm run build
 ```
 
-The compiled binary is written to `dist/bin/quicky-setup.js`.
+The compiled binary is written to `dist/bin/firstbase.js`.
