@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SOCKET_SECURITY_API_KEY: ${{ secrets.SOCKET_SECURITY_API_KEY }}
-      SOCKET_ORG: ${{ vars.SOCKET_ORG }}
+      SOCKET_ORG: ${{ vars.SOCKET_ORG || github.repository_owner }}
     steps:
       - name: Check Socket configuration
         id: socket-config
@@ -26,7 +26,7 @@ jobs:
           fi
 
           if [ -z "$SOCKET_ORG" ]; then
-            echo "::notice title=Socket skipped::SOCKET_ORG repository variable is not configured with a Socket organization slug."
+            echo "::notice title=Socket skipped::SOCKET_ORG could not be resolved. Set the SOCKET_ORG repository variable to your Socket organization slug."
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
