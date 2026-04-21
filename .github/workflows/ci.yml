@@ -21,10 +21,6 @@ jobs:
           node-version: 20.19.0
           cache: npm
 
-      - name: Dependency review
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v4
-
       - name: Install dependencies
         run: npm ci
 

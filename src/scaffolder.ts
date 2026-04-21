@@ -528,6 +528,7 @@ ${packageRows}
 
 ${qualityCommands.map((command) => `- ${command}`).join("\n")}
 - \`npm audit --audit-level=high\` - run in CI only, not in Husky, to avoid network calls during local commits
+- GitHub Dependency Review - runs in \`.github/workflows/dependency-review.yml\` on pull requests when GitHub dependency graph support is available
 - Socket Security policy scan - runs in \`.github/workflows/socket.yml\` when \`SOCKET_SECURITY_API_KEY\` and \`SOCKET_ORG\` are configured in GitHub
 
 ${answers.setupHusky ? "Husky is configured to run `npm run check` from `.husky/pre-commit`, so commits fail if format, tests, lint, or build fail. The default hook does not make network requests and does not interpolate user input.\n" : "Husky was not enabled for this scaffold. CI still runs the generated quality gate and dependency audit.\n"}
@@ -553,7 +554,8 @@ ${answers.tests
 
 - Dependencies are installed with exact versions and \`--save-exact\`.
 - CI runs \`npm audit --audit-level=high\` before the quality gate.
-- CI includes GitHub Dependency Review and an optional pinned Socket Security scan when \`SOCKET_SECURITY_API_KEY\` and \`SOCKET_ORG\` are configured in GitHub.
+- GitHub Dependency Review runs in its own pull-request workflow and passes with a plain log message when the repository does not support it yet.
+- CI includes an optional pinned Socket Security scan when \`SOCKET_SECURITY_API_KEY\` and \`SOCKET_ORG\` are configured in GitHub.
 - Secret-bearing files such as \`.env\`, \`.npmrc\`, \`*.pem\`, \`*.key\`, and service account JSON files are ignored by git.
 - \`.env.example\` uses fake placeholder values and must not contain real keys.
 - The API client validates the public API base URL, sets a 15 second timeout, and blocks cross-origin absolute requests from that client instance.
@@ -565,6 +567,7 @@ ${answers.framework === "next" ? "- Next.js security headers, including a baseli
 - Shared components: ${answers.framework === "react" ? "`src/components/`" : "`components/`"}
 - Theme entry: ${answers.framework === "react" ? "`src/index.css`" : answers.routing === "app" ? "`app/globals.css`" : "`styles/globals.css`"}
 - CI workflow: \`.github/workflows/ci.yml\`
+- Dependency Review workflow: \`.github/workflows/dependency-review.yml\`
 - Node version markers: \`.nvmrc\` and \`.node-version\`
 - Setup documentation: \`docs/production-setup.md\`
 

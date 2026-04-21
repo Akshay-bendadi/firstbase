@@ -104,7 +104,9 @@ When Husky is selected, the generated app gets:
 - `.husky/pre-commit` running `npm run check`.
 - `git config core.hooksPath .husky` during scaffold creation.
 
-The generated GitHub Actions workflow uses Node `20.19.0`, installs with `npm ci`, and runs `npm run check`, so local hooks and CI use the same gate.
+The generated GitHub Actions CI workflow uses Node `20.19.0`, installs with `npm ci`, runs `npm audit --audit-level=high`, and runs `npm run check`, so local hooks and CI use the same gate.
+
+The generated Dependency Review workflow runs only on pull requests, so push CI does not include a skipped dependency-review step. It preflights GitHub dependency graph support and passes with a plain log message until the repository can run Dependency Review.
 
 Generated apps also include `.nvmrc` and `.node-version` so local Node managers can match CI.
 
@@ -148,7 +150,7 @@ The generated `npm run check` includes tests only when the user selects the adva
 - The Axios client sets a 15 second timeout.
 - The Axios client blocks cross-origin absolute requests from the configured API instance and removes authorization headers before throwing.
 - Next.js projects receive `next.config.*` with baseline security headers and a Content Security Policy.
-- CI includes GitHub Dependency Review on pull requests.
+- GitHub Dependency Review runs in `.github/workflows/dependency-review.yml` on pull requests when GitHub dependency graph support is available.
 - CI includes an optional Socket policy scan for malicious package behavior and install-script risk when `SOCKET_SECURITY_API_KEY` and `SOCKET_ORG` are set in GitHub.
 
 ## Generated Project Documentation
@@ -166,4 +168,5 @@ Every generated app receives `docs/production-setup.md`. That file is tailored t
 - The release workflow publishes from the protected `npm-publish` GitHub environment with npm provenance.
 - Release tarballs and SHA-256 checksums are attached to GitHub releases.
 - `SECURITY.md` defines vulnerability reporting expectations.
+- `.github/workflows/dependency-review.yml` runs GitHub Dependency Review only on pull requests and passes with a plain log message when the repository does not support it yet.
 - `.github/workflows/socket.yml` runs a pinned Socket CLI policy scan when `SOCKET_SECURITY_API_KEY` and `SOCKET_ORG` are configured.

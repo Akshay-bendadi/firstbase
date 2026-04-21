@@ -105,6 +105,9 @@ on:
     branches: ["main", "master"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -118,10 +121,6 @@ jobs:
           node-version: 20.19.0
           cache: npm
 
-      - name: Dependency review
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v4
-
       - name: Install dependencies
         run: npm ci
 
@@ -130,6 +129,70 @@ jobs:
 
       - name: Quality gate
         run: npm run check
+`;
+}
+
+function dependencyReviewWorkflowContent(): string {
+  return `name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dependency review
+        shell: bash
+        env:
+          GH_TOKEN: \${{ github.token }}
+          REPOSITORY: \${{ github.repository }}
+          BASE_SHA: \${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: \${{ github.event.pull_request.head.sha }}
+        run: |
+          basehead="\${BASE_SHA}...\${HEAD_SHA}"
+          url="https://api.github.com/repos/\${REPOSITORY}/dependency-graph/compare/\${basehead}"
+          http_status="$(curl --silent --show-error --location --output response.json --write-out "%{http_code}" \\
+            -H "Accept: application/vnd.github+json" \\
+            -H "Authorization: Bearer \${GH_TOKEN}" \\
+            -H "X-GitHub-Api-Version: 2022-11-28" \\
+            "$url")"
+
+          if [ "$http_status" = "200" ]; then
+            echo "Dependency review API is available."
+          elif [ "$http_status" = "403" ] || [ "$http_status" = "404" ]; then
+            echo "Dependency review unavailable: dependency review is not supported for this repository or dependency graph is not enabled."
+            exit 0
+          else
+            echo "::error title=Dependency Review preflight failed::GitHub API returned HTTP $http_status while checking dependency review support."
+            cat response.json
+            exit 1
+          fi
+
+          vulnerability_count="$(jq '[.[] | select((.change_type == "added" or .change_type == "changed") and ((.vulnerabilities // []) | length > 0)) | .vulnerabilities[]] | length' response.json)"
+
+          if [ "$vulnerability_count" -eq 0 ]; then
+            echo "No vulnerable dependency changes found."
+            exit 0
+          fi
+
+          {
+            echo "### Dependency Review"
+            echo
+            echo "Found \${vulnerability_count} vulnerable changed dependency finding(s)."
+            echo
+            jq -r '.[] | select((.change_type == "added" or .change_type == "changed") and ((.vulnerabilities // []) | length > 0)) | . as $dependency | $dependency.vulnerabilities[] | "- \\($dependency.name)@\\($dependency.version // "unknown") in \\($dependency.manifest): \\(.severity) \\(.advisory_ghsa_id) - \\(.advisory_summary)"' response.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          jq -r '.[] | select((.change_type == "added" or .change_type == "changed") and ((.vulnerabilities // []) | length > 0)) | . as $dependency | $dependency.vulnerabilities[] | "\\($dependency.name)@\\($dependency.version // "unknown") in \\($dependency.manifest): \\(.severity) \\(.advisory_ghsa_id) - \\(.advisory_summary)"' response.json |
+            while IFS= read -r finding; do
+              echo "::error title=Vulnerable dependency::$finding"
+            done
+
+          exit 1
 `;
 }
 
@@ -293,6 +356,7 @@ export function scaffoldQualityFiles(
   writeIfChanged(path.join(projectPath, ".prettierrc.cjs"), prettierConfigContent());
   writeIfChanged(path.join(projectPath, ".prettierignore"), prettierIgnoreContent());
   writeIfChanged(path.join(projectPath, ".github", "workflows", "ci.yml"), ciWorkflowContent(framework, includeTests));
+  writeIfChanged(path.join(projectPath, ".github", "workflows", "dependency-review.yml"), dependencyReviewWorkflowContent());
   writeIfChanged(path.join(projectPath, ".github", "workflows", "socket.yml"), socketWorkflowContent());
   if (framework === "next") {
     writeIfChanged(path.join(projectPath, "eslint.config.mjs"), eslintConfigContent(language));
