@@ -16,7 +16,7 @@ CLI scaffold for starting a React or Next.js app with a production-oriented Tail
 - Adds Prettier with import sorting
 - Adds a GitHub Actions CI workflow with dependency audit
 - Adds a PR-only GitHub Dependency Review workflow
-- Adds an optional Socket Security workflow when `SOCKET_SECURITY_API_KEY` is configured in GitHub; `SOCKET_ORG` can override the default GitHub repository owner slug
+- Adds an optional Socket Security workflow when `SOCKET_SECURITY_API_KEY` is configured in GitHub; `SOCKET_ORG` can override the default lowercased GitHub repository owner slug
 - Generates a production `.gitignore` with build, cache, log, editor, and env entries
 - Offers a fast default setup or an advanced mode with React Query, SEO metadata, tests, and language support
 - Advanced mode can also add auth scaffolding, validated forms, a toast system, and an i18n language switcher
@@ -151,7 +151,7 @@ The generated app also receives:
 - Direct CLI package dependencies are pinned exactly, and generated app install commands use exact versions with `--save-exact`.
 - Generated CI runs `npm audit --audit-level=high`; Husky does not run audit so commits do not trigger network calls.
 - Generated GitHub Dependency Review runs in its own pull-request workflow so push CI does not show a skipped dependency-review step. It passes with a plain log message until GitHub dependency graph support is enabled for the repository.
-- Generated Socket Security workflow always runs a preflight job, skips cleanly when the Socket token is not configured, and scans with the GitHub repository owner as the default Socket organization slug. Set the repository variable `SOCKET_ORG` only when the Socket organization slug differs from the GitHub owner.
+- Generated Socket Security workflow always runs a preflight job, skips cleanly when the Socket token is not configured, and scans with the lowercased GitHub repository owner as the default Socket organization slug. Set the repository variable `SOCKET_ORG` only when the Socket organization slug differs from the GitHub owner.
 - npm publishing is guarded by CI-only release workflow checks, npm provenance, dry-run package inspection, and release checksums.
 - The CLI does not collect telemetry.
 - The CLI refuses to scaffold into a non-empty folder so stale files do not leak into new runs.

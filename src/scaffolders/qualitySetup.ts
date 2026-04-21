@@ -216,7 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SOCKET_SECURITY_API_KEY: \${{ secrets.SOCKET_SECURITY_API_KEY }}
-      SOCKET_ORG: \${{ vars.SOCKET_ORG || github.repository_owner }}
+      SOCKET_ORG: \${{ vars.SOCKET_ORG }}
     steps:
       - name: Check Socket configuration
         id: socket-config
@@ -228,13 +228,17 @@ jobs:
             exit 0
           fi
 
-          if [ -z "$SOCKET_ORG" ]; then
+          socket_org="\${SOCKET_ORG:-\${GITHUB_REPOSITORY_OWNER}}"
+          socket_org="$(printf '%s' "$socket_org" | tr '[:upper:]' '[:lower:]')"
+
+          if [ -z "$socket_org" ]; then
             echo "::notice title=Socket skipped::SOCKET_ORG could not be resolved. Set the SOCKET_ORG repository variable to your Socket organization slug."
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "::add-mask::$SOCKET_SECURITY_API_KEY"
+          echo "org=$socket_org" >> "$GITHUB_OUTPUT"
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
@@ -258,7 +262,7 @@ jobs:
         run: |
           repo="\${GITHUB_REPOSITORY#*/}"
           branch="\${GITHUB_HEAD_REF:-\${GITHUB_REF_NAME}}"
-          socket scan create --org "$SOCKET_ORG" --repo "$repo" --branch "$branch" --report --no-interactive .
+          socket scan create --org "\${{ steps.socket-config.outputs.org }}" --repo "$repo" --branch "$branch" --report --no-interactive .
 `;
 }
 
