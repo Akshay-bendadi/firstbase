@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SOCKET_SECURITY_API_KEY: ${{ secrets.SOCKET_SECURITY_API_KEY }}
-      SOCKET_ORG: ${{ vars.SOCKET_ORG }}
+      SOCKET_ORG: ${{ vars.SOCKET_ORG || 'quicky-setup' }}
     steps:
       - name: Check Socket configuration
         id: socket-config
