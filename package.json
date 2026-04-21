@@ -20,11 +20,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/quicky-setup.git"
+    "url": "git+https://github.com/Akshay-bendadi/quicky-setup.git"
   },
-  "homepage": "https://github.com/your-org/quicky-setup#readme",
+  "homepage": "https://github.com/Akshay-bendadi/quicky-setup#readme",
   "bugs": {
-    "url": "https://github.com/your-org/quicky-setup/issues"
+    "url": "https://github.com/Akshay-bendadi/quicky-setup/issues"
   },
   "publishConfig": {
     "access": "public"
