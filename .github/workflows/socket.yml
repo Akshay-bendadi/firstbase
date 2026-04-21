@@ -39,6 +39,38 @@ jobs:
           node-version: 20.19.0
           cache: npm
 
+      - name: Resolve Socket organization
+        id: socket-org
+        if: steps.socket-config.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          if [ -n "$SOCKET_ORG" ]; then
+            echo "org=$SOCKET_ORG" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          response="$(curl --fail --silent --show-error --header "Authorization: Bearer $SOCKET_SECURITY_API_KEY" https://api.socket.dev/v0/organizations)"
+          org="$(SOCKET_ORGS_JSON="$response" node --input-type=module <<'NODE'
+          const data = JSON.parse(process.env.SOCKET_ORGS_JSON || "{}");
+          const candidates = Array.isArray(data)
+            ? data
+            : data.organizations ?? data.data ?? data.results ?? data.items ?? [];
+          const org = Array.isArray(candidates) ? candidates[0] : candidates;
+          const slug = org?.slug ?? org?.org_slug ?? org?.name ?? "";
+          if (!slug) {
+            process.exit(1);
+          }
+          process.stdout.write(slug);
+          NODE
+          )" || org=""
+
+          if [ -z "$org" ]; then
+            echo "::error title=Socket org missing::Could not discover a Socket organization from the API token. Set SOCKET_ORG to the Socket organization slug."
+            exit 1
+          fi
+
+          echo "org=$org" >> "$GITHUB_OUTPUT"
+
       - name: Install Socket CLI
         if: steps.socket-config.outputs.enabled == 'true'
         run: npm install --global socket@1.1.85
@@ -49,9 +81,4 @@ jobs:
         run: |
           repo="${GITHUB_REPOSITORY#*/}"
           branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          org_args=()
-          if [ -n "$SOCKET_ORG" ]; then
-            org_args=(--org "$SOCKET_ORG")
-          fi
-
-          socket scan create "${org_args[@]}" --repo "$repo" --branch "$branch" --report --no-interactive .
+          socket scan create --org "${{ steps.socket-org.outputs.org }}" --repo "$repo" --branch "$branch" --report --no-interactive .
