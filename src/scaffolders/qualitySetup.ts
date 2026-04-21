@@ -229,9 +229,8 @@ jobs:
           fi
 
           if [ -z "$SOCKET_ORG" ]; then
-            echo "::notice title=Socket skipped::SOCKET_ORG repository variable is not configured with a Socket organization slug."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error title=Socket org missing::Set the SOCKET_ORG repository variable to your Socket organization slug, for example quicky-setup."
+            exit 1
           fi
 
           echo "::add-mask::$SOCKET_SECURITY_API_KEY"
