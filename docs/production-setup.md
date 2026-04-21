@@ -114,7 +114,7 @@ Next.js 16 uses Turbopack by default for `next dev` and `next build`, so no `--t
 
 The default Husky hook only runs local scripts. It does not make network requests and does not interpolate user input.
 
-The generated `socket.yml` workflow always runs a preflight job and skips cleanly when Socket is not configured. It scans only when the GitHub secret `SOCKET_SECURITY_API_KEY` and repository variable `SOCKET_ORG` are available. The Socket CLI install is pinned to `socket@1.1.85`.
+The generated `socket.yml` workflow always runs a preflight job and skips cleanly when Socket is not configured. It scans only when the GitHub secret `SOCKET_SECURITY_API_KEY` and repository variable `SOCKET_ORG` are available. `SOCKET_ORG` must be the Socket organization slug from Socket, not a defaulted GitHub owner or repository name. The Socket CLI install is pinned to `socket@1.1.85`.
 
 ## shadcn/ui-Compatible Files
 

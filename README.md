@@ -151,7 +151,7 @@ The generated app also receives:
 - Direct CLI package dependencies are pinned exactly, and generated app install commands use exact versions with `--save-exact`.
 - Generated CI runs `npm audit --audit-level=high`; Husky does not run audit so commits do not trigger network calls.
 - Generated GitHub Dependency Review runs in its own pull-request workflow so push CI does not show a skipped dependency-review step. It passes with a plain log message until GitHub dependency graph support is enabled for the repository.
-- Generated Socket Security workflow always runs a preflight job, skips cleanly when Socket is not configured, and scans only when the GitHub secret `SOCKET_SECURITY_API_KEY` and repository variable `SOCKET_ORG` are available.
+- Generated Socket Security workflow always runs a preflight job, skips cleanly when Socket is not configured, and scans only when the GitHub secret `SOCKET_SECURITY_API_KEY` and repository variable `SOCKET_ORG` are available. `SOCKET_ORG` must be the Socket organization slug from Socket, not a defaulted GitHub owner or repository name.
 - npm publishing is guarded by CI-only release workflow checks, npm provenance, dry-run package inspection, and release checksums.
 - The CLI does not collect telemetry.
 - The CLI refuses to scaffold into a non-empty folder so stale files do not leak into new runs.
